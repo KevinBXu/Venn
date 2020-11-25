@@ -19,9 +19,6 @@
         document.querySelector("#name").value = profile.getName();
         document.querySelector("#email").value = profile.getEmail();
 
-        var auth2 = gapi.auth2.getAuthInstance();
-        auth2.signOut();
-
         document.querySelector("form").submit();
         }
     </script>

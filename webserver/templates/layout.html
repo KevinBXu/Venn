@@ -6,6 +6,7 @@
 
         <meta charset="utf-8">
         <meta name="viewport" content="initial-scale=1, width=device-width">
+        <meta name="google-signin-client_id" content="544895891085-c0ee6mvu0fgpl9ki745i06crhlc67o2o.apps.googleusercontent.com">
 
         <!-- http://getbootstrap.com/docs/4.5/ -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
@@ -20,6 +21,14 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
         <script src="https://apis.google.com/js/platform.js" async defer></script>
         <!-- old script -->
+        <script>
+            function signOut() {
+                var auth2 = gapi.auth2.getAuthInstance();
+                auth2.signOut().then(function () {
+                    window.location.href="/login"
+                });
+            }
+        </script>
         <title>Venn: {% block title %}{% endblock %}</title>
     </head>
 
@@ -38,8 +47,10 @@
                         <li class="nav-item"><a class="nav-link" href="/view">View An Event's Status</a></li>
                     </ul>
                     <ul class="navbar-nav ml-auto mt-2">
-                        <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
-
+                        <li class="nav-item"><a class="nav-link" onclick="signOut();" href="#">Log Out</a></li>
+                        <li class="nav-item" style="margin-left:10px">
+                            <div class="g-signin2" data-theme="dark"></div>
+                        </li>
                     </ul>
             </div>
         </nav>

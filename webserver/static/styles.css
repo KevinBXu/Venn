@@ -1,0 +1,102 @@
+nav {
+  background-color: #6A5ACD;
+}
+
+h1 {
+  font-size: 60px;
+}
+
+p {
+  text-align: center;
+  color: #4D4D4D;
+  font-size: 20px;
+  margin-left: 100px;
+  margin-right: 100px;
+}
+
+a {
+  color: #5500FF;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Rainbow text from https://w3bits.com/rainbow-text/ */
+.main:hover {
+  background-image: linear-gradient(to left, violet, indigo, blue, green, yellow, orange, red);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* flex properties from https://www.w3schools.com/cssref/css3_pr_flex.asp */
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 20px;
+}
+
+.btn-secondary {
+  max-width: 200px;
+  min-width: 150px;
+}
+
+.margins {
+  margin-right: 50px;
+  margin-left: 50px;
+}
+
+main .form-control
+{
+    /* Center form controls */
+    display: inline-block;
+
+    /* Override Bootstrap's 100% width for form controls */
+    width: auto;
+}
+
+main
+{
+    /* Scroll horizontally as needed */
+    overflow-x: auto;
+
+    /* Center contents */
+    text-align: center;
+}
+
+main img
+{
+    /* Constrain images on small screens */
+    max-width: 100%;
+}
+
+table {
+    background-color: transparent;
+    margin-bottom: 1rem;
+    width: 100%;
+    table-layout: fixed;
+}
+
+table th,
+table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+thead {
+    font-weight: bold;
+}
+
+tbody tr:nth-of-type(odd) {
+    background-color: rgb(179, 208, 255, 0.3)
+}
+
+#select {
+    width: 205px;
+}
+
+.small-form {
+    width: 100px;
+}

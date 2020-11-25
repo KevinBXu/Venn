@@ -1,0 +1,46 @@
+<html lang="en">
+  <head>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+
+    <!-- https://favicon.io/emoji-favicons/money-mouth-face/ -->
+    <link href="/static/VennSquare.png" rel="icon">
+
+    <link href="/static/styles.css" rel="stylesheet">
+
+    <meta name="google-signin-scope" content="profile email">
+    <meta name="google-signin-client_id" content="544895891085-c0ee6mvu0fgpl9ki745i06crhlc67o2o.apps.googleusercontent.com">
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <script>
+        function onSignIn(googleUser) {
+        // Useful data for your client-side scripts:
+        var profile = googleUser.getBasicProfile();
+
+        document.querySelector("#name").value = profile.getName();
+        document.querySelector("#email").value = profile.getEmail();
+
+        var auth2 = gapi.auth2.getAuthInstance();
+        auth2.signOut();
+
+        document.querySelector("form").submit();
+        }
+    </script>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark color">
+        <a class="navbar-brand" href="/"><span class="red">Venn</span></a>
+    </nav>
+    <h1 class="center">Welcome To Venn</h1>
+    <div class="center">
+        <img src="/static/VennLogo.png" alt="Venn Logo" style="width:25%">
+    </div>
+    <h3 class="center">Please sign in with Google</h3>
+    <div style="display:flex;justify-content:center;align-items:center;">
+        <div class="g-signin2" data-width="300" data-height="75" data-longtitle="true" data-onsuccess="onSignIn" data-theme="dark"></div>
+    </div>
+    <form hidden action="/login" method="POST">
+        <input id="name" type="text" name="name" value=""><br>
+        <input id="email" type="text" name="email" value=""><br>
+    </form>
+  </body>
+</html>

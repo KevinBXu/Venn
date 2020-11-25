@@ -22,8 +22,21 @@
         <script src="https://apis.google.com/js/platform.js" async defer></script>
         <!-- old script -->
         <script>
+            // from https://developers.google.com/identity/sign-in/web/listeners
+            var auth2; // The Sign-In object.
+
+            function onSignIn(googleUser) {
+              auth2 = gapi.auth2.getAuthInstance();
+
+              // Listen for changes to current user.
+              auth2.currentUser.listen(userChanged);
+            };
+
+            var userChanged = function (user) {
+                window.location.href="/login";
+            };
+
             function signOut() {
-                var auth2 = gapi.auth2.getAuthInstance();
                 auth2.signOut().then(function () {
                     window.location.href="/login"
                 });
@@ -49,19 +62,11 @@
                     <ul class="navbar-nav ml-auto mt-2">
                         <li class="nav-item"><a class="nav-link" onclick="signOut();" href="#">Log Out</a></li>
                         <li class="nav-item" style="margin-left:10px">
-                            <div class="g-signin2" data-theme="dark"></div>
+                            <div class="g-signin2" data-theme="dark" data-onsuccess="onSignIn"></div>
                         </li>
                     </ul>
             </div>
         </nav>
-
-        {% if get_flashed_messages() %}
-            <header>
-                <div class="alert alert-primary border text-center" role="alert">
-                    {{ get_flashed_messages() | join(" ") }}
-                </div>
-            </header>
-        {% endif %}
 
         <main class="container p-5">
             {% block main %}{% endblock %}

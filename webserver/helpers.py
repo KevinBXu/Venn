@@ -17,3 +17,25 @@ def login_required(f):
             return redirect("/login")
         return f(*args, **kwargs)
     return decorated_function
+
+def check_time(time):
+    parts = time.split(':')
+
+    if len(parts) != 2 or len(parts[0]) != 2 or len(parts[1]) != 2:
+        return False
+
+    try:
+        if 0 <= int(parts[0]) and int(parts[0]) < 24 and 0 <= int(parts[1]) and int(parts[1]) < 60:
+            return True
+        else:
+            return False
+    except:
+        return False
+
+def check_chronology(start_time, end_time):
+    if int(start_time.split(":")[0]) > int(end_time.split(":")[0]):
+        return False
+    elif int(start_time.split(":")[0]) == int(end_time.split(":")[0]):
+        if int(start_time.split(":")[1]) > int(end_time.split(":")[1]):
+            return False
+    return True

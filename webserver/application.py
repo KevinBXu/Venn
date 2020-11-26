@@ -9,7 +9,7 @@ from werkzeug.exceptions import default_exceptions, HTTPException, InternalServe
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 
-from helpers import login_required
+from helpers import login_required, check_time, check_chronology
 
 # Configure application
 app = Flask(__name__)
@@ -61,7 +61,6 @@ def login():
 
         return redirect("/")
     else:
-        print("login")
         return render_template("login.html")
 
 
@@ -79,3 +78,35 @@ def logout():
 @app.route("/create", methods=["GET", "POST"])
 def create():
     """ Create A New Event"""
+    if request.method == "POST":
+        name = request.form.get("name")
+
+        password = generate_password_hash(request.form.get("password"))
+
+        daterange = request.form.get("daterange").split("-")
+        start_date = datetime.datetime.strptime(daterange[0].strip(), "%m/%d/%Y")
+        end_date = datetime.datetime.strptime(daterange[1].strip(), "%m/%d/%Y")
+
+        start_time = request.form.get("start_time")
+        end_time = request.form.get("end_time")
+
+        if not check_time(start_time) or not check_time(end_time):
+            return render_template("apology.html")
+
+        if not check_chronology(start_time, end_time):
+            return render_template("apology.html")
+
+        # start_time += ":00"
+        # end_time += ":00"
+
+        db.execute("INSERT INTO events (name, hash, start_date, end_date, start_time, end_time, timezone) VALUES(?,?,?,?,?,?,?)", name, password, start_date, end_date, start_time, end_time, -5)
+
+    return render_template("create.html")
+
+@app.route("/created")
+def created():
+    """ Display Link To Newly Created Event """
+
+    link = "example.com/?eid=EVENT_ID"
+
+    return render_template("created.html", link=link)

@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Create
+{% endblock %}
+
+{% block main %}
+    <h2>
+        Create a New Event
+    </h2>
+    <div>
+        <form action="/create" method="post">
+            <label>Name:</label>
+            <input required type="text" name="name"></input><br>
+            <label>Password (leave blank if not desired):</label>
+            <input type="text" name="password"></input><br>
+            <label>Dates:</label>
+            <input type="text" name="daterange" value/><br>
+            <label>Start Time:</label>
+            <input required type="time" name="start_time" placeholder="HH:MM (24-hour clock)"></input><br>
+            <label>End Time:</label>
+            <input required type="time" name="end_time" placeholder="HH:MM (24-hour clock)"></input><br>
+            <input type="submit">
+        </form>
+    </div>
+{% endblock %}
+
+{% block daterange %}
+<!-- daterange from https://htmlstream.com/preview/nova-v1.2/documentation/libraries/date-range-picker.html#how-to-use -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.js"></script>
+    <script>
+        $(function() {
+          $('input[name="daterange"]').daterangepicker({
+            opens: 'right'
+          }, function(start, end, label) {
+            console.log("A new date selection was made: " + start.format('YYYY-MM-DD') + ' to ' + end.format('YYYY-MM-DD'));
+          });
+        });
+    </script>
+{% endblock %}

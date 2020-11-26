@@ -100,3 +100,7 @@ tbody tr:nth-of-type(odd) {
 .small-form {
     width: 100px;
 }
+
+input {
+  margin-bottom: 20px;
+}

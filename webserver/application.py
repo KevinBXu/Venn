@@ -99,7 +99,8 @@ def create():
         # start_time += ":00"
         # end_time += ":00"
 
-        db.execute("INSERT INTO events (name, hash, start_date, end_date, start_time, end_time, timezone) VALUES(?,?,?,?,?,?,?)", name, password, start_date, end_date, start_time, end_time, -5)
+        event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, start_time, end_time, timezone) VALUES(?,?,?,?,?,?,?)", name, password, start_date, end_date, start_time, end_time, -5)
+        db.execute("INSERT INTO members (event_id, user_id, host) VALUES(?,?,?)", event_id, session["user_id"], True)
 
     return render_template("create.html")
 

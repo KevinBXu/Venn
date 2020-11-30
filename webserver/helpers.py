@@ -4,6 +4,7 @@ import urllib.parse
 
 from flask import redirect, render_template, request, session
 from functools import wraps
+from googleapiclient.discovery import build
 
 def login_required(f):
     """
@@ -39,3 +40,10 @@ def check_chronology(start_time, end_time):
         if int(start_time.split(":")[1]) > int(end_time.split(":")[1]):
             return False
     return True
+
+
+def get_calendar():
+
+    service = build('calendar', 'v3')
+
+    return

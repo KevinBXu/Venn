@@ -130,7 +130,7 @@ def join():
             flash("Incorrect ID or Password. Please Try Again.")
             return render_template("join.html", ID=request.form.get("id"))
         
-        rows = db.execute("SELECT * FROM members ")
+        rows = db.execute("SELECT * FROM members WHERE event_id=? AND ")
         
         db.execute("INSERT INTO members (event_id, user_id) VALUES(?,?)", int(request.form.get("id")), session["user_id"])
 

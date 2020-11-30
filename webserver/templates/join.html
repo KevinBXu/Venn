@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Join
+{% endblock %}
+
+{% block main %}
+    <div class="center">
+        <form action="/join" method="post">
+            <label>Event ID:</label><br>
+            <input type="number" min="1" required name="id" value="{{ ID }}"><br>
+            <label>Password:</label><br>
+            <input type="text" placeholder="Password" name="password"><br>
+            <input type="submit">
+        </form>
+    </div>
+{% endblock %}

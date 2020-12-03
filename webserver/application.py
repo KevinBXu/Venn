@@ -14,7 +14,7 @@ import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 
-from helpers import login_required, check_time, check_chronology, get_calendar, credentials_to_dict
+from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials
 
 # Configure application
 app = Flask(__name__)
@@ -102,7 +102,7 @@ def logout():
 def authorize():
     # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-      CLIENT_SECRETS_FILE, scopes=SCOPES)
+        CLIENT_SECRETS_FILE, scopes=SCOPES)
 
     # The URI created here must exactly match one of the authorized redirect URIs
     # for the OAuth 2.0 client, which you configured in the API Console. If this
@@ -114,10 +114,12 @@ def authorize():
     flow.redirect_uri = tmp_url
 
     tmp_url, state = flow.authorization_url(
-      # Enable offline access so that you can refresh an access token without
-      # re-prompting the user for permission. Recommended for web server apps.
-      access_type='offline'
-      )
+        # Enable offline access so that you can refresh an access token without
+        # re-prompting the user for permission. Recommended for web server apps.
+        access_type='offline'
+    )
+
+    # http to https from https://github.com/requests/requests-oauthlib/issues/287
     if "http:" in tmp_url:
         tmp_url = "https:" + tmp_url[5:]
     authorization_url = tmp_url
@@ -152,7 +154,7 @@ def oauth2callback():
     # ACTION ITEM: In a production app, you likely want to save these
     #              credentials in a persistent database instead.
     credentials = flow.credentials
-    flask.session['credentials'] = credentials_to_dict(credentials)
+    credentials_to_database(credentials, session["user_id"])
 
     return flask.redirect("/")
 
@@ -228,20 +230,24 @@ def join():
 def view():
 
     if request.method == "POST": #AKA If they submit the form to add their GCal...
-        if 'credentials' not in flask.session:
+
+        creds = db.execute("SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
+        if len(creds) != 1:
             return flask.redirect('authorize')
+
+        creds = credentials_to_dict(creds[0])
 
         # Load credentials from the session.
         credentials = google.oauth2.credentials.Credentials(
-          **flask.session['credentials'])
+          **creds)
 
         # Save credentials back to session in case access token was refreshed.
         # ACTION ITEM: In a production app, you likely want to save these
         #              credentials in a persistent database instead.
-        flask.session['credentials'] = credentials_to_dict(credentials)
+        update_credentials(credentials, session["user_id"])
 
         service = googleapiclient.discovery.build(
-          API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False)
+            API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False)
 
         # Gather all calendar IDs
         calendars = []
@@ -286,6 +292,8 @@ def view():
                 start = event['start'].get('dateTime', event['start'].get('date'))
                 end = event['end'].get('dateTime', event['end'].get('date'))
                 print(start, end, event['summary'])
+                # Put event into database
+                # db.execute("INSERT INTO conflicts (event_id, user_id, start_time, end_time) VALUES(?,?,?,?)", event[0]['id'], session["user_id"], start, end)
 
         return redirect(flask.url_for("view", id=request.form.get("id")))
 
@@ -297,3 +305,13 @@ def view():
     # Have to pass in the join url
     # Have to pass through the best event times by GET
     return render_template("view.html", event=event[0])
+
+@app.route("/test")
+def test():
+    creds = db.execute("SELECT user_id, token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
+    creds = credentials_to_dict(creds[0])
+    for test in creds:
+        print(test)
+        print(creds[test])
+        print(type(creds[test]))
+    return redirect ("/")

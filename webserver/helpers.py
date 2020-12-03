@@ -47,3 +47,12 @@ def get_calendar():
     service = build('calendar', 'v3')
 
     return
+
+#From https://developers.google.com/identity/protocols/oauth2/web-server
+def credentials_to_dict(credentials):
+  return {'token': credentials.token,
+          'refresh_token': credentials.refresh_token,
+          'token_uri': credentials.token_uri,
+          'client_id': credentials.client_id,
+          'client_secret': credentials.client_secret,
+          'scopes': credentials.scopes}

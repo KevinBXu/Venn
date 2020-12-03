@@ -6,6 +6,23 @@
 
 {% block main %}
     <div>
-        Welcome to Venn.
+        <h1>Welcome to Venn, {{ name }}</h1>
+    </div>
+    <div>
+        <table>
+            <thead>
+                <tr>
+                    <td>Event Id</td>
+                    <td>Name</td>
+                    <td>Link</td>
+                </tr>
+            </thead>
+            {% for event in events %}
+            <tr>
+                <td>{{ event["id"] }}</td>
+                <td><a href="{{ event["view"] }}">{{ event["name"] }}</a></td>
+                <td>{{ event["link"] }}</td>
+            {% endfor %}
+        </table>
     </div>
 {% endblock %}

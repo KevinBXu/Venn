@@ -4,6 +4,7 @@ nav {
 
 h1 {
   font-size: 60px;
+  font-family: "Apple Chancery";
 }
 
 p {
@@ -103,4 +104,16 @@ tbody tr:nth-of-type(odd) {
 
 input {
   margin-bottom: 20px;
+}
+
+select {
+  margin-bottom: 20px;
+}
+
+.submitButton {
+  background-color: Lavender;
+}
+
+.textInput {
+  background-color: LightCyan;
 }

@@ -14,7 +14,7 @@ import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 
-from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials, best_times, list_to_string
+from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials
 
 # Configure application
 app = Flask(__name__)
@@ -31,9 +31,6 @@ def after_request(response):
     response.headers["Pragma"] = "no-cache"
     return response
 
-# Custom filter
-app.jinja_env.filters["len"] = len
-app.jinja_env.filters["list_to_string"] = list_to_string
 
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_FILE_DIR"] = mkdtemp()
@@ -151,10 +148,8 @@ def create():
         end_date = daterange[1].strip().split("/")
         end_date = datetime.date(int(end_date[2]), int(end_date[0]), int(end_date[1]))
 
-        start_time = str(int(request.form.get("start_time_hours")) + int(request.form.get("start_time_noon"))).zfill(2) + ":" + request.form.get("start_time_minutes").zfill(2)
-        end_time = str(int(request.form.get("end_time_hours")) + int(request.form.get("end_time_noon"))).zfill(2) + ":" + request.form.get("end_time_minutes").zfill(2)
-
-        print(start_time)
+        start_time = str(int(request.form.get("start_time_hours")) + int(request.form.get("start_time_noon"))).zill(2) + ":" + request.form.get("start_time_minutes")
+        end_time = str(int(request.form.get("end_time_hours")) + int(request.form.get("end_time_noon"))).zfill(2) + ":" + request.form.get("end_time_minutes")
 
         if not check_time(start_time) or not check_time(end_time):
             return render_template("apology.html")
@@ -359,11 +354,9 @@ def view():
     if len(event) == 0:
         flash("Not a valid event")
         return redirect("/")
-    event = event[0]
-
     # Have to pass in the join url
     # Have to pass through the best event times by GET
-    rows = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1", event["id"], session["user_id"])
+    rows = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1", event[0]["id"], session["user_id"])
 
     # rows will only exist if host exists
     if len(rows) != 0:
@@ -374,22 +367,55 @@ def view():
     # Determine the best times
     conflicts = db.execute("SELECT * FROM conflicts WHERE event_id=?", request.args.get("id"))
 
-    people = best_times(event, conflicts)
+    # Stores number of conflicts for each time interval we have
+    num_conflicts = {}
 
-    keys = sorted(people, key=lambda key: len(people[key]))
-    rows = db.execute("SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
-    names = {}
+    # Creates a start_date date object (Y, M, D)
+    start = event[0]["start_date"].split("-")
+    start_date = datetime.date(int(start[0]), int(start[1]), int(start[2]))
 
-    for row in rows:
-        names[row["id"]]=row["name"]
+    # Same as start_date
+    end = event[0]["end_date"].split("-")
+    end_date = datetime.date(int(end[0]), int(end[1]), int(end[2]))
 
-    for time in people:
-        unavailable = []
-        for user_id in people[time]:
-            unavailable.append(names[user_id])
-        people[time] = unavailable
+    # For while loop to increment the date
+    date = start_date
 
-    return render_template("view.html", event=event, host=host, people=people, keys=keys)
+    # 10 minute intervals
+    interval = 10
+    delta = datetime.timedelta(minutes=interval)
+
+    # The starting time boundary for the event (earliest the event can start on a given day)
+    start_time = event[0]["start_time"].split(":")
+    start_time = datetime.time(int(start_time[0]), int(start_time[1]))
+
+    # The ending time boundary for the event (latest time an event can end)
+    end_time = event[0]["end_time"].split(":")
+    end_time = datetime.time(int(end_time[0]), int(end_time[1]))
+
+    # Store duration of the event
+    duration = datetime.timedelta(minutes=int(event[0]["duration"]))
+
+    while date <= end_date:
+        # start time of the interval
+        dtime = datetime.datetime(date.year, date.month, date.day, start_time.hour, start_time.minute)
+
+        # max value for dtime
+        end = datetime.datetime(date.year, date.month, date.day, end_time.hour, end_time.minute) - duration
+
+        # For each datetime incrementation
+        while dtime < end:
+            num_conflicts[dtime] = 0
+            for conflict in conflicts:
+                # logic from https://stackoverflow.com/questions/13513932/algorithm-to-detect-overlapping-periods
+                if datetime.datetime.fromisoformat(conflict["start_time"]) < dtime + duration and datetime.datetime.fromisoformat(conflict["end_time"]) > dtime:
+                    num_conflicts[dtime] += 1
+            dtime += delta
+
+        date += datetime.timedelta(days=1)
+
+    print(num_conflicts)
+    return render_template("view.html", event=event[0], host=host)
 
 
 @app.route("/test")
@@ -402,4 +428,76 @@ def test():
         print(type(creds[test]))
     return redirect ("/")
 
+
+# Uses prefix sums
+def best_times(event_id):
+
+    # TreeMap<DateTime, Pair<HashSet<user_id>,int (-1 or 1)>>
+    # HashMap<DateTime, HashSet<user_id>>
+
+    # start_date, end_date, start_time, end_time, duration
+    event = db.execute("SELECT * FROM events WHERE id=?", event_id)
+    event = event[0]
+
+    duration = int(event["duration"])
+
+    # Determine the boundaries for best times (since entries that are 0 will not appear)
+    start = event["start_date"].split("-")
+    start_date = datetime.date(int(start[0]), int(start[1]), int(start[2]))
+
+    end = event["end_date"].split("-")
+    end_date = datetime.date(int(end[0]), int(end[1]), int(end[2]))
+
+    start_time = event["start_time"].split(":")
+    start_time = datetime.time(int(start_time[0]), int(start_time[1]))
+    end_time = event["end_time"].split(":")
+    end_time = datetime.time(int(end_time[0]), int(end_time[1]))
+
+    start = datetime.combine(start_date, start_time)
+    end = datetime.combine(end_date, end_time)
+
+    """
+    # How to make a custom DateTime variable
+    start = datetime.datetime(start_date.year, start_date.month, start_date.day, start_time.hour, start_time.minute)
+    # start = datetime.combine(start_date, start_time)
+    end = datetime.datetime(end_date.year, end_date.month, end_date.day, end_time.hour, end_time.minute)
+
+    # How to add time
+    delta = datetime.timedelta(minutes=10)
+
+    # How to convert string from database to DateTime
+    datetime.datetime.fromisoformat(conflict["start_time"])
+    """
+
+    # Start with:
+    # Dict<DateTime, int>
+    # Since we might just be able to check who's available when afterwards with little cost
+
+    # user_id, start_time, end_time
+    conflicts = db.execute("SELECT * FROM conflicts WHERE event_id=?", event_id)
+
+    unavailable = {}
+
+    """
+    for conflict in conflicts:
+        conflict_start = datetime.datetime.fromisoformat(conflict["start_time"])
+        conflict_end = datetime.datetime.fromisoformat(conflict["end_time"])
+
+        # Check if we even need to consider the conflict
+        # Guarantees that the conflict is in the general time range of the event
+        if conflict_end < start or conflict_start > end:
+            continue
+        # For example, checks if the conflict starts after 9:00 PM and ends before 9:00 AM (where the possible time window is 9:00 AM~9:00 PM)
+        elif (conflict_start.hour > end.hour or conflict_start.minute > end.minute) and (conflict_end.hour < start.hour or conflict_end.minute < start.minute):
+            continue
+        
+        # Make the conflict time conform to the start_time and end_time of the day
+        if conflict_start.hour > end.hour or conflict_start.minute > end.minute:
+            
+
+    """
+
+    # Desired end result:
+    # Dict<(start_time, end_time), people_available>
+    # people_available can eventually represent a list of people available
 

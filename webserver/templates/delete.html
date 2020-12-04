@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Delete
+{% endblock %}
+
+{% block main %}
+    <div class="center">
+        <h2>Are you sure you want to delete {{ name }}?</h2>
+    </div>
+    <div class="center">
+        <form id="yes" action="/delete" method="POST">
+            <input name="id" hidden type="number" value="{{ ID }}">
+        </form>
+        <form id="no" action="/view" method="GET">
+            <input name="id" hidden type="number" value="{{ ID }}">
+        </form>
+        <input type="submit" value="Yes" form="yes" style="background-color: #00EE00; font-weight:bold; margin: 10px; width: 20em;  height: 2em;">
+        <input type="submit" value="No" form="no" style="background-color: #EE0000; font-weight:bold; margin: 10px; width: 20em;  height: 2em;">
+    </div>
+{% endblock %}

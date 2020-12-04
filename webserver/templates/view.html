@@ -15,4 +15,33 @@
             <input type="submit">
         </form>
     </div>
+    {% if host %}
+    <div class="center">
+        <form action="/delete" method="GET">
+            <label>Delete the Event</label><br>
+            <input type="number" hidden name="id" value="{{ event["id"] }}">
+            <input type="submit">
+        </form>
+    </div>
+    {% endif %}
+    <div>
+        <table>
+            <thead>
+                <tr>
+                    <td>Event Time</td>
+                    <td>Number of Conflicts</td>
+                    <td colspan="2">People Missing</td>
+                </tr>
+            </thead>
+            {% for key in keys %}
+            <tr>
+                <td>{{ key }}</td>
+                <td>{{ people[key] | len }}</td>
+                <td colspan="2">
+                    {{ people[key] | list_to_string }}
+                </td>
+            {% endfor %}
+        </table>
+    </div>
+
 {% endblock %}

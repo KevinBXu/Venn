@@ -44,7 +44,7 @@
     <body>
 
         <nav class="navbar navbar-expand-lg navbar-dark color">
-            <a class="navbar-brand" href="/"><span class="red">Venn</span></a>
+            <a class="navbar-brand" href="/"><span class="red" style="font-family: Apple Chancery">Venn</span></a>
             <button aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-target="#navbar" data-toggle="collapse" type="button">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -52,7 +52,7 @@
                     <ul class="navbar-nav mr-auto mt-2">
                         <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
                         <li class="nav-item"><a class="nav-link" href="/create">Create New Event</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/join">Join a Event</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/join">Join an Event</a></li>
                     </ul>
                     <ul class="navbar-nav ml-auto mt-2">
                         <li class="nav-item"><a class="nav-link" onclick="signOut();" href="#">Log Out</a></li>
@@ -62,7 +62,7 @@
                     </ul>
             </div>
         </nav>
-        
+
         {% if get_flashed_messages() %}
             <header>
                 <div class="alert alert-primary border text-center" role="alert">

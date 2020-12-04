@@ -5,13 +5,16 @@
 {% endblock %}
 
 {% block main %}
+    <h1>
+        Join an Event!
+    </h1>
     <div class="center">
         <form action="/join" method="post">
             <label>Event ID:</label><br>
-            <input type="number" min="1" required name="id" value="{{ ID }}"><br>
+            <input type="number"  class="textInput" min="1" required name="id" value="{{ ID }}"><br>
             <label>Password:</label><br>
-            <input type="text" placeholder="Password" name="password"><br>
-            <input type="submit">
+            <input type="text" class="textInput" placeholder="Password" name="password"><br>
+            <input type="submit" class="submitButton">
         </form>
     </div>
 {% endblock %}

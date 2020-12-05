@@ -5,43 +5,62 @@
 {% endblock %}
 
 {% block main %}
-    <div class="center">
+    <div>
         <h1>{{ event["name"] }}</h1>
     </div>
     <div class="center">
         <form action="/view" method="post">
-            <label>Add Your Google Calendar</label><br>
+            <label>Add Your Google Calendar</label>
             <input type="number" hidden name="id" value="{{ event["id"] }}">
-            <input type="submit">
+            <input type="submit" class="small-margin">
         </form>
     </div>
     {% if host %}
-    <div class="center">
-        <form action="/delete" method="GET">
-            <label>Delete the Event</label><br>
-            <input type="number" hidden name="id" value="{{ event["id"] }}">
-            <input type="submit">
-        </form>
-    </div>
-    {% endif %}
     <div>
-        <table>
-            <thead>
-                <tr>
-                    <td>Event Time</td>
-                    <td>Number of Conflicts</td>
-                    <td colspan="2">People Missing</td>
-                </tr>
-            </thead>
-            {% for key in keys %}
-            <tr>
-                <td>{{ key }}</td>
-                <td>{{ people[key] | len }}</td>
-                <td colspan="2">
-                    {{ people[key] | list_to_string }}
-                </td>
-            {% endfor %}
-        </table>
+        <form action="/delete" method="GET">
+            <label>Delete the Event</label>
+            <input type="number" hidden name="id" value="{{ event["id"] }}">
+            <input type="submit" class="small-margin">
+        </form>
+    {% endif %}
     </div>
+    <div style="position: absolute; left: 10%; right: 10%">
+    {% for date in unavailable %}
+        <table style="margin-top: 50px">
+            <tbody class="labels">
+                <td colspan="5">
+					<label for="{{ date }}"><h3>{{ date }}</h3></label>
+					<input type="checkbox" name="{{ date }}" id="{{ date }}" data-toggle="toggle">
+				</td>
+            </tbody>
+            <tbody class="hide">
+            <tr>
+                <td><h4>Event Start</h4></td>
+                <td><h4>Event End</h4></td>
+                <td><h4>Number of Conflicts</h4></td>
+                <td colspan="2"><h4>People Missing</h4></td>
+            </tr>
+            {% for period in unavailable[date] %}
+                <tr>
+                    <td>{{ period["start"] }}</td>
+                    <td>{{ period["end"] }}</td>
+                    <td>{{ period["people"] | len }}</td>
+                    <td colspan="2">
+                        {{ period["people"] | list_to_string }}
+                    </td>
+                </tr>
 
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+    </div>
+    <script>
+    // Toggle feature from https://codepen.io/andornagy/pen/gaGBZz
+        $(document).ready(function() {
+        	$('[data-toggle="toggle"]').change(function(){
+        		$(this).parents().next('.hide').toggle();
+        	});
+        });
+    </script>
 {% endblock %}

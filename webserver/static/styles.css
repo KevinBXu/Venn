@@ -23,30 +23,16 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Rainbow text from https://w3bits.com/rainbow-text/ */
-.main:hover {
-  background-image: linear-gradient(to left, violet, indigo, blue, green, yellow, orange, red);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
 /* flex properties from https://www.w3schools.com/cssref/css3_pr_flex.asp */
 .center {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-  margin: 20px;
-}
-
-.btn-secondary {
-  max-width: 200px;
-  min-width: 150px;
+  margin: auto;
 }
 
 .margins {
-  margin-right: 50px;
-  margin-left: 50px;
+  margin: 50px;
 }
 
 main .form-control
@@ -120,4 +106,23 @@ select {
 
 label {
   margin-right: 10px;
+}
+
+.small-margin {
+  margin-top: 10px;
+}
+
+.labels tr td {
+	background-color: #2C4EC1;
+	font-weight: bold;
+	color: #fff;
+}
+
+.label tr td label {
+	display: block;
+}
+
+
+[data-toggle="toggle"] {
+	display: none;
 }

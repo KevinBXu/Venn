@@ -386,25 +386,42 @@ def view():
     # Determine the best times
     conflicts = db.execute("SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
 
+    rows = db.execute("SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
+
+    names = {}
+    for row in rows:
+        names[row["id"]] = row["name"]
+
+    unavailable = {}
+
     if event["start_time"] == None:
         people = best_times_allday(event, conflicts)
+        for time in sorted(people):
+            date = datetime.date(time.year, time.month, time.day).strftime("%A, %B %d, %Y")
+            if date not in unavailable:
+                unavailable[date] = []
+            period = {}
+            period["start"] = time.strftime("%A, %B %d, %Y")
+            period["end"] = (time + datetime.timedelta(days=int(event["duration"]))).strftime("%A, %B %d, %Y")
+            period["people"] = []
+            for user_id in people[time]:
+                period["people"].append(names[user_id])
+            unavailable[date].append(period)
     else:
         people = best_times(event, conflicts)
+        for time in sorted(people, key=lambda key: (len(people[key]), key)):
+            date = datetime.date(time.year, time.month, time.day).strftime("%A, %B %d, %Y")
+            if date not in unavailable:
+                unavailable[date] = []
+            period = {}
+            period["start"] = time.strftime("%I:%M %p")
+            period["end"] = (time + datetime.timedelta(minutes=int(event["duration"]))).strftime("%I:%M %p")
+            period["people"] = []
+            for user_id in people[time]:
+                period["people"].append(names[user_id])
+            unavailable[date].append(period)
 
-    keys = sorted(people, key=lambda key: len(people[key]))
-    rows = db.execute("SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
-    names = {}
-
-    for row in rows:
-        names[row["id"]]=row["name"]
-
-    for time in people:
-        unavailable = []
-        for user_id in people[time]:
-            unavailable.append(names[user_id])
-        people[time] = unavailable
-
-    return render_template("view.html", event=event, host=host, people=people, keys=keys)
+    return render_template("view.html", event=event, host=host, unavailable=unavailable)
 
 
 @app.route("/test")

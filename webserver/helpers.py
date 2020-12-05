@@ -50,7 +50,7 @@ def check_chronology(start_time, end_time):
 def credentials_to_database(credentials, user_id):
     db = SQL("sqlite:///venn.db")
     db.execute("INSERT INTO credentials (user_id, token, refresh_token, token_uri, client_id, client_secret, scopes) VALUES(?,?,?,?,?,?,?)", user_id, credentials.token, credentials.refresh_token, credentials.token_uri, credentials.client_id, credentials.client_secret, credentials.scopes[0])
-    return
+    return credentials
 
 def credentials_to_dict(creds):
 
@@ -62,7 +62,7 @@ def credentials_to_dict(creds):
 
 def update_credentials(credentials, user_id):
     db = SQL("sqlite:///venn.db")
-    db.execute("UPDATE credentials SET token=?, refresh_token=?, token_uri=?, client_id=?, client_secret=?, scopes=? WHERE user_id=?", credentials.token, credentials.refresh_token, credentials.token_uri, credentials.client_id, credentials.client_secret, credentials.scopes[0], user_id)
+    db.execute("UPDATE credentials SET token=? WHERE user_id=?", credentials.token, user_id)
     return
 
 # interval_time is used for both start and end
@@ -224,3 +224,33 @@ def best_times(event, conflicts):
 
 def list_to_string(unavailable):
     return ', '.join(sorted(unavailable))
+
+# Uses prefix sums
+def best_times_allday(event, conflicts):
+
+    # Creates a start_date date object (Y, M, D)
+    start_date = datetime.date.fromisoformat(event["start_date"])
+
+    # Same as start_date
+    end_date = datetime.date.fromisoformat(event["end_date"])
+
+    date = start_date
+
+    # Store duration of the event
+    duration = datetime.timedelta(days=int(event["duration"]))
+
+    people = {}
+
+    # For each day
+    while date <= end_date:
+
+        people[date] = set()
+        for conflict in conflicts:
+
+           # Overlap logic from https://stackoverflow.com/questions/13513932/algorithm-to-detect-overlapping-periods
+           if datetime.date.fromisoformat(conflict["start_time"].split("T")[0]) <= date + duration and datetime.date.fromisoformat(conflict["end_time"].split("T")[0]) >= date:
+               people[date].add(conflict["user_id"])
+
+        date += datetime.timedelta(days=1)
+
+    return people

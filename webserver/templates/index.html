@@ -15,7 +15,7 @@
                     <td>Name</td>
                     <td>Start Date</td>
                     <td>End Date</td>
-                    <td colspan="2">Link</td>
+                    <td colspan="2">Link (click to copy!)</td>
                 </tr>
             </thead>
             {% for event in events %}
@@ -23,8 +23,36 @@
                 <td><a href="{{ event["view"] }}">{{ event["name"] }}</a></td>
                 <td>{{ event["start_date"] }}</td>
                 <td>{{ event["end_date"] }}</td>
-                <td colspan="2">{{ event["link"] }}</td>
+                <td colspan="2"><a href="#" class="linkcopy">{{ event["link"] }}</a></td>
             {% endfor %}
         </table>
     </div>
+    <!-- From https://codepen.io/ix4/pen/povebzM -->
+    <script>
+        const links = document.querySelectorAll('.linkcopy');
+
+        const copyToClipboard = str => {
+          const el = document.createElement('input');
+          str.dataset.copyString ? el.value = str.dataset.copyString : el.value = str.text;
+          el.setAttribute('readonly', '');
+          el.style.position = 'absolute';
+          el.style.opacity = 0;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+        }
+
+        const clickInteraction = (e) => {
+          e.preventDefault();
+          copyToClipboard(e.target);
+          e.target.classList.add(cls.copied);
+          setTimeout(() => e.target.classList.remove(cls.copied), 1000);
+          setTimeout(() => e.target.classList.remove(cls.hover), 700);
+        }
+
+        Array.from(links).forEach(link => {
+          link.addEventListener('click', e => clickInteraction(e));
+        });
+    </script>
 {% endblock %}

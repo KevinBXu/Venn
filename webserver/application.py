@@ -14,7 +14,7 @@ import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 
-from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials, best_times, list_to_string
+from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials, best_times, list_to_string, best_times_allday
 
 # Configure application
 app = Flask(__name__)
@@ -54,6 +54,7 @@ CLIENT_SECRETS_FILE = "../../../client_secret_544895891085-c0ee6mvu0fgpl9ki745i0
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 API_SERVICE_NAME = 'calendar'
 API_VERSION = 'v3'
+API_KEY = "AIzaSyBaLDP-gD5M5hxXQSon8oIAzIYH9RNY5G0"
 
 @app.route("/")
 @login_required
@@ -143,7 +144,7 @@ def create():
         duration = int(request.form.get("duration"))
 
         #["", "+"][total > 0] from https://stackoverflow.com/questions/2763432/how-to-print-the-sign-of-a-digit-for-positive-numbers-in-python
-        timezone = ["", "+"][int(request.form.get("timezone")) > 0] + request.form.get("timezone").zfill(2) + ":00"
+        timezone = ["-", "+"][int(request.form.get("timezone")) > 0] + request.form.get("timezone").strip("-").zfill(2) + ":00"
 
         daterange = request.form.get("daterange").split("-")
         start_date = daterange[0].strip().split("/")
@@ -151,21 +152,23 @@ def create():
         end_date = daterange[1].strip().split("/")
         end_date = datetime.date(int(end_date[2]), int(end_date[0]), int(end_date[1]))
 
-        start_time = str(int(request.form.get("start_time_hours")) + int(request.form.get("start_time_noon"))).zfill(2) + ":" + request.form.get("start_time_minutes").zfill(2)
-        end_time = str(int(request.form.get("end_time_hours")) + int(request.form.get("end_time_noon"))).zfill(2) + ":" + request.form.get("end_time_minutes").zfill(2)
+        if request.form.get("allday") == None:
+            start_time = str(int(request.form.get("start_time_hours")) + int(request.form.get("start_time_noon"))).zfill(2) + ":" + request.form.get("start_time_minutes").zfill(2)
+            end_time = str(int(request.form.get("end_time_hours")) + int(request.form.get("end_time_noon"))).zfill(2) + ":" + request.form.get("end_time_minutes").zfill(2)
 
-        print(start_time)
+            if not check_time(start_time) or not check_time(end_time):
+                return render_template("apology.html")
 
-        if not check_time(start_time) or not check_time(end_time):
-            return render_template("apology.html")
+            if not check_chronology(start_time, end_time):
+                return render_template("apology.html")
 
-        if not check_chronology(start_time, end_time):
-            return render_template("apology.html")
+            # start_time += ":00"
+            # end_time += ":00"
 
-        # start_time += ":00"
-        # end_time += ":00"
+            event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, start_time, end_time, timezone, duration) VALUES(?,?,?,?,?,?,?,?)", name, password, start_date, end_date, start_time, end_time, timezone, duration)
+        else:
+            event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, timezone, duration) VALUES(?,?,?,?,?,?)", name, password, start_date, end_date, timezone, duration)
 
-        event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, start_time, end_time, timezone, duration) VALUES(?,?,?,?,?,?,?,?)", name, password, start_date, end_date, start_time, end_time, timezone, duration)
         db.execute("INSERT INTO members (event_id, user_id, host) VALUES(?,?,?)", event_id, session["user_id"], True)
 
         url = flask.url_for("join", _external=True) + "?id=" + str(event_id)
@@ -198,7 +201,8 @@ def delete():
 
         # events, conflicts, members
         db.execute("DELETE FROM events WHERE id=?", event_id)
-        db.execute("DELETE FROM conflicts WHERE event_id=?", event_id)
+        db.execute("DELETE FROM conflicts WHERE id= IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", event_id)
+        db.execute("DELETE FROM event_conflicts WHERE event_id=?", event_id)
         db.execute("DELETE FROM members WHERE event_id=?", event_id)
 
         return redirect("/")
@@ -291,16 +295,17 @@ def view():
         creds = credentials_to_dict(creds[0])
 
         # Load credentials from the session.
-        credentials = google.oauth2.credentials.Credentials(
-          **creds)
+        credentials = google.oauth2.credentials.Credentials(**creds)
+
+        print(credentials.valid)
 
         # Save credentials back to session in case access token was refreshed.
         # ACTION ITEM: In a production app, you likely want to save these
         #              credentials in a persistent database instead.
         update_credentials(credentials, session["user_id"])
-
-        service = googleapiclient.discovery.build(
-            API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False)
+        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False, developerKey=API_KEY)
+        print(service._http.credentials.token)
+        print('test')
 
         # Gather all calendar IDs
         calendars = []
@@ -334,7 +339,7 @@ def view():
             # },
             for event in events:
 
-                row = db.execute("SELECT * FROM conflicts WHERE id=?", event["id"])
+                row = db.execute("SELECT * FROM conflicts WHERE google_id=?", event["id"])
 
                 if len(row) == 0:
 
@@ -345,12 +350,19 @@ def view():
                         start = start[:19]
                     end = event['end'].get('dateTime')
                     if end == None:
-                        end = event['end'].get('date') + "T00:00:00"
+                        end = (datetime.date.fromisoformat(event['end'].get('date')) - datetime.timedelta(days=1)).isoformat() + "T23:59:59"
                     else:
                         end = end[:19]
 
                     # Put event into database
-                    db.execute("INSERT INTO conflicts (event_id, user_id, start_time, end_time, id) VALUES(?,?,?,?,?)", event_row[0]['id'], session["user_id"], start, end, event["id"])
+                    conflict_id = db.execute("INSERT INTO conflicts (user_id, start_time, end_time, google_id) VALUES(?,?,?,?)", session["user_id"], start, end, event["id"])
+                else:
+                    conflict_id = row[0]["id"]
+
+                event_conflict = db.execute("SELECT * FROM event_conflicts WHERE conflict_id=? AND event_id=?", conflict_id, request.form.get("id"))
+
+                if len(event_conflict) == 0:
+                    db.execute("INSERT INTO event_conflicts (conflict_id, event_id) VALUES(?,?)", conflict_id, request.form.get("id"))
 
         return redirect(flask.url_for("view", id=request.form.get("id")))
 
@@ -372,9 +384,12 @@ def view():
         host = False
 
     # Determine the best times
-    conflicts = db.execute("SELECT * FROM conflicts WHERE event_id=?", request.args.get("id"))
+    conflicts = db.execute("SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
 
-    people = best_times(event, conflicts)
+    if event["start_time"] == None:
+        people = best_times_allday(event, conflicts)
+    else:
+        people = best_times(event, conflicts)
 
     keys = sorted(people, key=lambda key: len(people[key]))
     rows = db.execute("SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])

@@ -4,6 +4,46 @@
     Create
 {% endblock %}
 
+{% block script %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function()
+        {
+           document.querySelector("#allday").addEventListener("change", function()
+           {
+               if (document.querySelector("#allday").value == "false")
+               {
+
+                    document.querySelector("#allday").value = "true"
+                    document.querySelectorAll("select").forEach(function(select)
+                    {
+                        if (select.name != "timezone")
+                        {
+                            select.style.display = "none";
+                        }
+                    });
+                    document.querySelector("#early").style.display = "none";
+                    document.querySelector("#late").style.display = "none";
+                    document.querySelector("#duration").innerHTML = "Duration (days)";
+               }
+               else
+               {
+                    document.querySelector("#allday").value = "false"
+                    document.querySelectorAll("select").forEach(function(select)
+                    {
+                        if (select.name != "timezone")
+                        {
+                            select.style.display = "initial";
+                        }
+                    });
+                    document.querySelector("#early").style.display = "initial";
+                    document.querySelector("#late").style.display = "initial";
+                    document.querySelector("#duration").innerHTML = "Duration (minutes)";
+               }
+           });
+        });
+    </script>
+{% endblock %}
+
 {% block main %}
     <h1>
         Create a New Event!
@@ -14,11 +54,13 @@
             <input required type="text" name="name" class="textInput"></input><br>
             <label>Password (leave blank if not desired):</label>
             <input type="text" name="password" class="textInput"></input><br>
-            <label>Duration (minutes):</label>
-            <input required type="number" name="duration" class="textInput" min="1"/><br>
             <label>Dates:</label>
-            <input type="text" name="daterange" class="textInput" value/><br>
-            <label>Earliest Start Time</label>
+            <input type="text" name="daterange" style="width: 25%" class="textInput" value/><br>
+            <input id="allday" type="checkbox" value="false" name="allday">
+            <label for="allday">All/Multiple Day Event</label><br>
+            <label id="duration">Duration (minutes):</label>
+            <input required type="number" name="duration" class="textInput" min="1"/><br>
+            <label id="early">Earliest Start Time:</label>
             <select name="start_time_hours">
             {% for i in range(1,12) %}
                 <option value="{{ i }}">{{ i }}</option>
@@ -34,7 +76,7 @@
                 <option value="0">AM</option>
                 <option value="12">PM</option>
             </select><br>
-            <label>Latest End Time:</label>
+            <label id="late">Latest End Time:</label>
             <select name="end_time_hours">
             {% for i in range(1,12) %}
                 <option value="{{ i }}">{{ i }}</option>

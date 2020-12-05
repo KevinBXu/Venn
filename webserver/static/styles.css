@@ -103,11 +103,11 @@ tbody tr:nth-of-type(odd) {
 }
 
 input {
-  margin-bottom: 20px;
+  margin-top: 30px;
 }
 
 select {
-  margin-bottom: 20px;
+  margin-top: 30px;
 }
 
 .submitButton {
@@ -116,4 +116,8 @@ select {
 
 .textInput {
   background-color: LightCyan;
+}
+
+label {
+  margin-right: 10px;
 }

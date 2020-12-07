@@ -6,9 +6,11 @@
 
 {% block main %}
     <div>
-        Your request could not be completed.
+        <h3 >{{ message }}</h3>
     </div>
     <div>
-        
+        <form method="GET" action="/">
+            <input type="submit" value="Return To Home">
+        </form>
     </div>
 {% endblock %}

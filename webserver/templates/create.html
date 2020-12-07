@@ -40,6 +40,11 @@
                     document.querySelector("#duration").innerHTML = "Duration (minutes)";
                }
            });
+
+            // from https://stackoverflow.com/questions/8809265/get-current-selected-option/8809329#8809329
+           document.querySelector("#timezone").addEventListener("change", function() {
+               document.querySelector("#dst").value = this.options[this.selectedIndex].getAttribute("useDaylightTime")
+           });
         });
     </script>
 {% endblock %}
@@ -69,7 +74,7 @@
             <select>
             <select name="start_time_minutes">
             {% for i in range(0,60) %}
-                <option value="{{ i }}">{{ i }}</option>
+                <option value="{{ i }}">{{ i | fill }}</option>
             {% endfor %}
             </select>
             <select name="start_time_noon">
@@ -85,7 +90,7 @@
             <select>
             <select name="end_time_minutes">
             {% for i in range(60) %}
-                <option value="{{ i }}">{{ i }}</option>
+                <option value="{{ i }}">{{ i | fill }}</option>
             {% endfor %}
             </select>
             <select name="end_time_noon">
@@ -94,7 +99,7 @@
             </select><br>
             <label>Timezone:</label>
             <!-- timezone select from https://www.freeformatter.com/time-zone-list-html-select.html -->
-            <select name="timezone" class="textInput">
+            <select id="timezone" name="timezone" class="textInput">
             	<option timeZoneId="1" gmtAdjustment="GMT-12:00" useDaylightTime="0" value="-12">(GMT-12:00) International Date Line West</option>
             	<option timeZoneId="2" gmtAdjustment="GMT-11:00" useDaylightTime="0" value="-11">(GMT-11:00) Midway Island, Samoa</option>
             	<option timeZoneId="3" gmtAdjustment="GMT-10:00" useDaylightTime="0" value="-10">(GMT-10:00) Hawaii</option>
@@ -178,6 +183,7 @@
             	<option timeZoneId="81" gmtAdjustment="GMT+12:00" useDaylightTime="0" value="12">(GMT+12:00) Fiji, Kamchatka, Marshall Is.</option>
             	<option timeZoneId="82" gmtAdjustment="GMT+13:00" useDaylightTime="0" value="13">(GMT+13:00) Nuku'alofa</option>
             </select>
+            <input hidden id="dst" value="0" name="dst">
             <input type="submit" class="submitButton">
         </form>
     </div>

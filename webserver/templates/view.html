@@ -45,18 +45,18 @@
     <div class="center margin-medium">
         <form action="/view" method="GET">
             <input type="number" hidden name="id" value="{{ event["id"] }}">
-            Display the top <input type="number" name="max_events" min="1"> closest to
+            Display the top <input type="number" name="max_events" min="1"> events closest to
             <select name="start_time_hours">
                 <option></option>
             {% for i in range(1,12) %}
                 <option value="{{ i }}">{{ i }}</option>
             {% endfor %}
                 <option value="0">12</option>
-            <select>
+            <select>:
             <select name="start_time_minutes">
                 <option></option>
             {% for i in range(0,60) %}
-                <option value="{{ i }}">{{ i }}</option>
+                <option value="{{ i }}">{{ i | fill }}</option>
             {% endfor %}
             </select>
             <select name="start_time_noon">
@@ -71,7 +71,7 @@
     {% endif %}
     {% if host %}
     <div class="center margin-medium">
-        <form action="/export" method="GET"> <!-- maybe later change the action to a "export to gcals" html -->
+        <form action="/export" method="GET">
             <input type="number" hidden name="id" value="{{ event["id"] }}">
             {% if search %}
             <label>Event Date: </label>

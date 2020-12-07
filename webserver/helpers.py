@@ -24,6 +24,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 def check_time(time):
     parts = time.split(':')
 
@@ -38,6 +39,8 @@ def check_time(time):
     except:
         return False
 
+
+# Returns True if start_time is earlier in time that end_time
 def check_chronology(start_time, end_time):
     if int(start_time.split(":")[0]) > int(end_time.split(":")[0]):
         return False
@@ -46,24 +49,61 @@ def check_chronology(start_time, end_time):
             return False
     return True
 
-#From https://developers.google.com/identity/protocols/oauth2/web-server
+
+# Adds the credentials to venn.db
 def credentials_to_database(credentials, user_id):
     db = SQL("sqlite:///venn.db")
     db.execute("INSERT INTO credentials (user_id, token, refresh_token, token_uri, client_id, client_secret, scopes) VALUES(?,?,?,?,?,?,?)", user_id, credentials.token, credentials.refresh_token, credentials.token_uri, credentials.client_id, credentials.client_secret, credentials.scopes[0])
     return credentials
 
+
+# Creates a list for scopes (necessary for OAuth2.0)
 def credentials_to_dict(creds):
-
     scopes = [creds["scopes"]]
-
     creds["scopes"] = scopes
-
     return creds
 
+
+# Update the credentials in venn.db
 def update_credentials(credentials, user_id):
     db = SQL("sqlite:///venn.db")
     db.execute("UPDATE credentials SET token=? WHERE user_id=?", credentials.token, user_id)
     return
+
+
+# Change a list to a comma separated string
+def list_to_string(unavailable):
+    return ', '.join(sorted(unavailable))
+
+
+# Adds leading zeros to num
+def fill(num):
+    return str(num).zfill(2)
+
+
+# Find the date that daylight saving time starts for a given year
+def dst_start(year):
+    delta = datetime.timedelta(days=1)
+    date = datetime.date(int(year), 3, 1)
+    sundays = 0
+    while True:
+        if date.weekday() == 6:
+            sundays += 1
+            if sundays == 2:
+                return date
+        date += delta
+
+
+# Find the date that daylight saving time ends for a given year
+def dst_end(year):
+    delta = datetime.timedelta(days=1)
+    date = datetime.date(int(year), 11, 1)
+    sundays = 0
+    while True:
+        if date.weekday() == 6:
+            return date
+        date += delta
+
 
 # Achieves O(C + I), where C is # of conflicts and I is # of possible intervals
 def best_times(event, conflicts, interval):
@@ -80,16 +120,16 @@ def best_times(event, conflicts, interval):
     # The ending time boundary for the event (latest time an event can end)
     end_time = datetime.time.fromisoformat(event["end_time"])
 
-    start = datetime.datetime.combine(start_date, start_time, timezone(event["timezone"]))
-    end = datetime.datetime.combine(end_date, end_time, timezone(event["timezone"]))
+    start = datetime.datetime.combine(start_date, start_time, get_timezone(event["timezone"]))
+    end = datetime.datetime.combine(end_date, end_time, get_timezone(event["timezone"]))
 
     # {DateTime, {user_id, delta_conflicts}} where when delta_conflicts = 0, we remove it from the dict
     # This is a prefix sum
     unavailable = {}
 
     for row in conflicts:
-        conflict_start = datetime.datetime.fromisoformat(row["start_time"]).astimezone(timezone(event["timezone"]))
-        conflict_end = datetime.datetime.fromisoformat(row["end_time"]).astimezone(timezone(event["timezone"]))
+        conflict_start = datetime.datetime.fromisoformat(row["start_time"]).astimezone(get_timezone(event["timezone"]))
+        conflict_end = datetime.datetime.fromisoformat(row["end_time"]).astimezone(get_timezone(event["timezone"]))
 
         # Check if we even need to consider the conflict
         # Guarantees that the conflict is in the general time range of the event
@@ -173,10 +213,10 @@ def best_times(event, conflicts, interval):
     # For each day
     while date <= end_date:
         # start time of the interval
-        dtime = datetime.datetime.combine(date, start_time, timezone(event["timezone"]))
+        dtime = datetime.datetime.combine(date, start_time, get_timezone(event["timezone"]))
 
         # max value for dtime
-        end = datetime.datetime.combine(date, end_time, timezone(event["timezone"])) - duration
+        end = datetime.datetime.combine(date, end_time, get_timezone(event["timezone"])) - duration
 
         # index our sums
         start_index = -1
@@ -239,10 +279,8 @@ def best_times(event, conflicts, interval):
 
     return people
 
-def list_to_string(unavailable):
-    return ', '.join(sorted(unavailable))
 
-# Uses prefix sums
+
 def best_times_allday(event, conflicts):
 
     # Creates a start_date date object (Y, M, D)
@@ -264,10 +302,10 @@ def best_times_allday(event, conflicts):
         people[date] = set()
         for conflict in conflicts:
 
-            start = datetime.datetime.fromisoformat(conflict["start_time"]).astimezone(timezone(event["timezone"]))
+            start = datetime.datetime.fromisoformat(conflict["start_time"]).astimezone(get_timezone(event["timezone"]))
             start_date = datetime.date(start.year, start.month, start.day)
 
-            end = datetime.datetime.fromisoformat(conflict["end_time"]).astimezone(timezone(event["timezone"]))
+            end = datetime.datetime.fromisoformat(conflict["end_time"]).astimezone(get_timezone(event["timezone"]))
             end_date = datetime.date(start.year, start.month, start.day)
 
             # Overlap logic from https://stackoverflow.com/questions/13513932/algorithm-to-detect-overlapping-periods
@@ -278,13 +316,16 @@ def best_times_allday(event, conflicts):
 
     return people
 
-def timezone(timezone):
+
+# Returns a timezone object given a UTC offset
+def get_timezone(timezone):
 
     offset = int(timezone.split(":")[0])
 
     delta = datetime.timedelta(hours=offset)
 
     return datetime.timezone(delta)
+
 
 def find_conflicts(start_datetime, end_datetime, conflicts, timezone):
 
@@ -301,6 +342,7 @@ def find_conflicts(start_datetime, end_datetime, conflicts, timezone):
             unavailable.add(conflict["user_id"])
 
     return unavailable
+
 
 def find_conflicts_allday(start_date, end_date, conflicts, timezone):
 

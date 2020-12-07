@@ -53,7 +53,8 @@ def check_chronology(start_time, end_time):
 # Adds the credentials to venn.db
 def credentials_to_database(credentials, user_id):
     db = SQL("sqlite:///venn.db")
-    db.execute("INSERT INTO credentials (user_id, token, refresh_token, token_uri, client_id, client_secret, scopes) VALUES(?,?,?,?,?,?,?)", user_id, credentials.token, credentials.refresh_token, credentials.token_uri, credentials.client_id, credentials.client_secret, credentials.scopes[0])
+    db.execute("INSERT INTO credentials (user_id, token, refresh_token, token_uri, client_id, client_secret, scopes) VALUES(?,?,?,?,?,?,?)", user_id, 
+               credentials.token, credentials.refresh_token, credentials.token_uri, credentials.client_id, credentials.client_secret, credentials.scopes[0])
     return credentials
 
 
@@ -149,8 +150,8 @@ def best_times(event, conflicts, interval):
         if row["user_id"] not in unavailable[conflict_end]:
             unavailable[conflict_end][row["user_id"]] = 0
 
-        unavailable[conflict_start][row["user_id"]]+=1
-        unavailable[conflict_end][row["user_id"]]-=1
+        unavailable[conflict_start][row["user_id"]] += 1
+        unavailable[conflict_end][row["user_id"]] -= 1
 
     # Get a sorted list of keys
     keys = sorted(unavailable)
@@ -182,8 +183,8 @@ def best_times(event, conflicts, interval):
             if current[user_id] == 0:
                 del current[user_id]
         # Update timeperiod and positive
-        timeperiod.append({"time":time,"people":copy.deepcopy(current)})
-        positive.append({"time":time,"people":copy.deepcopy(current_pos)})
+        timeperiod.append({"time": time, "people": copy.deepcopy(current)})
+        positive.append({"time": time, "people": copy.deepcopy(current_pos)})
 
     """
     # May delete unavailable, keys, current, and current_pos to save on memory usage
@@ -205,7 +206,6 @@ def best_times(event, conflicts, interval):
     # Store duration of the event
     duration = datetime.timedelta(minutes=int(event["duration"]))
 
-
     length = len(timeperiod)
 
     people = {}
@@ -225,7 +225,6 @@ def best_times(event, conflicts, interval):
         # For each datetime incrementation
         while dtime < end:
             people[dtime] = set()
-
 
             # Finds new start_index
             while start_index != length - 1 and timeperiod[start_index + 1]["time"] <= dtime:
@@ -278,7 +277,6 @@ def best_times(event, conflicts, interval):
         date += datetime.timedelta(days=1)
 
     return people
-
 
 
 def best_times_allday(event, conflicts):

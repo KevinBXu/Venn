@@ -31,6 +31,7 @@ def after_request(response):
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
     return response
+    
 
 # Custom filter
 app.jinja_env.filters["len"] = len
@@ -58,13 +59,15 @@ API_SERVICE_NAME = 'calendar'
 API_VERSION = 'v3'
 API_KEY = "AIzaSyBaLDP-gD5M5hxXQSon8oIAzIYH9RNY5G0"
 
+
 @app.route("/")
 @login_required
 def index():
 
     name = db.execute("SELECT name FROM users WHERE id=?", session["user_id"])[0]["name"]
 
-    events = db.execute("SELECT name, events.id, start_date, end_date FROM events JOIN members ON events.id=members.event_id WHERE members.user_id=?", session["user_id"])
+    events = db.execute(
+        "SELECT name, events.id, start_date, end_date FROM events JOIN members ON events.id=members.event_id WHERE members.user_id=?", session["user_id"])
 
     # Add links to view and join every event
     for event in events:
@@ -113,7 +116,7 @@ def oauth2callback():
     state = flask.session['state']
 
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-      CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+        CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
     tmp_url = flask.url_for('oauth2callback', _external=True)
     if "http:" in tmp_url:
         tmp_url = "https:" + tmp_url[5:]
@@ -137,7 +140,7 @@ def oauth2callback():
 def login():
     """Ask user to login"""
 
-     # User reached route via POST (as by submitting a form via POST)
+    # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
 
         rows = db.execute("SELECT * FROM users WHERE name=? AND email=?", request.form.get("name"), request.form.get("email"))
@@ -202,8 +205,10 @@ def create():
         if request.form.get("allday") == None:
             try:
                 # Convert the request times to ISO format
-                start_time = str(int(request.form.get("start_time_hours")) + int(request.form.get("start_time_noon"))).zfill(2) + ":" + request.form.get("start_time_minutes").zfill(2)
-                end_time = str(int(request.form.get("end_time_hours")) + int(request.form.get("end_time_noon"))).zfill(2) + ":" + request.form.get("end_time_minutes").zfill(2)
+                start_time = str(int(request.form.get("start_time_hours")) + int(request.form.get("start_time_noon"))
+                                 ).zfill(2) + ":" + request.form.get("start_time_minutes").zfill(2)
+                end_time = str(int(request.form.get("end_time_hours")) + int(request.form.get("end_time_noon"))
+                               ).zfill(2) + ":" + request.form.get("end_time_minutes").zfill(2)
             except:
                 return render_template("apology.html", message="Incorrect time format")
 
@@ -216,13 +221,15 @@ def create():
                 return render_template("apology.html", message="Start time cannot be after end time.")
 
             try:
-                event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, start_time, end_time, timezone, duration) VALUES(?,?,?,?,?,?,?,?)", name, password, start_date, end_date, start_time, end_time, timezone, duration)
+                event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, start_time, end_time, timezone, duration) VALUES(?,?,?,?,?,?,?,?)",
+                                      name, password, start_date, end_date, start_time, end_time, timezone, duration)
             except:
                 return render_template("apology.html", message="Could not create event")
         else:
             try:
                 # Start time and end time are both NULL for all/multiple day events
-                event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, timezone, duration) VALUES(?,?,?,?,?,?)", name, password, start_date, end_date, timezone, duration)
+                event_id = db.execute("INSERT INTO events (name, hash, start_date, end_date, timezone, duration) VALUES(?,?,?,?,?,?)",
+                                      name, password, start_date, end_date, timezone, duration)
             except:
                 return render_template("apology.html", message="Could not create event")
 
@@ -235,7 +242,7 @@ def create():
     return render_template("create.html")
 
 
-@app.route("/delete", methods=["GET","POST"])
+@app.route("/delete", methods=["GET", "POST"])
 @login_required
 def delete():
     """ Delete an Event"""
@@ -312,14 +319,16 @@ def join():
 def view():
     """ View an event """
     # Check that the event ID is valid
-    event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)", request.args.get("id"), session["user_id"])
+    event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)", 
+                       request.args.get("id"), session["user_id"])
     if len(event) == 0:
         flash("Not a valid event")
         return redirect("/")
     event = event[0]
 
     # Their google credentials must exist in order to access a view page
-    creds = db.execute("SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
+    creds = db.execute(
+        "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
     if len(creds) != 1:
         return flask.redirect('authorize')
 
@@ -333,7 +342,8 @@ def view():
         update_credentials(credentials, session["user_id"])
 
         # Build the API requests object
-        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False, developerKey=API_KEY)
+        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, 
+                                                  credentials=credentials, cache_discovery=False, developerKey=API_KEY)
 
         # Gather all calendar IDs
         calendars = []
@@ -352,7 +362,8 @@ def view():
 
         for calendar in calendars:
             # Execute the https request to get all of the calendar events
-            events_result = service.events().list(calendarId=calendar, timeMax=end_date, timeMin=start_date, singleEvents=True, orderBy='startTime', timeZone=event["timezone"]).execute()
+            events_result = service.events().list(calendarId=calendar, timeMax=end_date, timeMin=start_date,
+                                                  singleEvents=True, orderBy='startTime', timeZone=event["timezone"]).execute()
             cal_events = events_result.get('items', [])
 
             # Add each conflict to the database
@@ -370,18 +381,22 @@ def view():
                     end = cal_event['end'].get('dateTime')
                     # If the conflict is all day, format so that the conflict ends at 12PM
                     if end == None:
-                        end = (datetime.date.fromisoformat(cal_event['end'].get('date')) - datetime.timedelta(days=1)).isoformat() + "T23:59:59" + event["timezone"]
+                        end = (datetime.date.fromisoformat(cal_event['end'].get(
+                            'date')) - datetime.timedelta(days=1)).isoformat() + "T23:59:59" + event["timezone"]
 
                     # Put the conflict into database
-                    conflict_id = db.execute("INSERT INTO conflicts (user_id, start_time, end_time, google_id) VALUES(?,?,?,?)", session["user_id"], start, end, cal_event["id"])
+                    conflict_id = db.execute(
+                        "INSERT INTO conflicts (user_id, start_time, end_time, google_id) VALUES(?,?,?,?)", session["user_id"], start, end, cal_event["id"])
                 else:
                     conflict_id = row[0]["id"]
 
                 # Check that the conflict is not already associated with an event
-                event_conflict = db.execute("SELECT * FROM event_conflicts WHERE conflict_id=? AND event_id=?", conflict_id, request.form.get("id"))
+                event_conflict = db.execute("SELECT * FROM event_conflicts WHERE conflict_id=? AND event_id=?", 
+                                            conflict_id, request.form.get("id"))
                 if len(event_conflict) == 0:
                     # Add the conflict into the event
-                    db.execute("INSERT INTO event_conflicts (conflict_id, event_id) VALUES(?,?)", conflict_id, request.form.get("id"))
+                    db.execute("INSERT INTO event_conflicts (conflict_id, event_id) VALUES(?,?)", 
+                               conflict_id, request.form.get("id"))
 
         # Update members to track that the user has imported their calendar
         db.execute("UPDATE members SET imported=1 WHERE user_id=? AND event_id=?", session["user_id"], event["id"])
@@ -400,15 +415,19 @@ def view():
         # Check if it is an all/multiple day event
         if event["start"].find("T") != -1:
             # Store a string representing the event date and times
-            event_period = datetime.datetime.fromisoformat(event["start"]).strftime("%A, %B %d, %Y from %I:%M %p") + " to " + datetime.datetime.fromisoformat(event["end"]).strftime("%I:%M %p")
+            event_period = datetime.datetime.fromisoformat(event["start"]).strftime(
+                "%A, %B %d, %Y from %I:%M %p") + " to " + datetime.datetime.fromisoformat(event["end"]).strftime("%I:%M %p")
         else:
             # Store a string representing only the event dates
-            event_period = datetime.date.fromisoformat(event["start"]).strftime("%A, %B %d, %Y") + " to " + datetime.date.fromisoformat(event["end"]).strftime("%A, %B %d, %Y")
+            event_period = datetime.date.fromisoformat(event["start"]).strftime(
+                "%A, %B %d, %Y") + " to " + datetime.date.fromisoformat(event["end"]).strftime("%A, %B %d, %Y")
         return render_template("view.html", event=event, host=host, event_period=event_period)
 
-    conflicts = db.execute("SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
+    conflicts = db.execute(
+        "SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
 
-    rows = db.execute("SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
+    rows = db.execute(
+        "SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
 
     # Create a dictionary of IDs to names so that we can use it translate IDs to names
     names = {}
@@ -416,7 +435,8 @@ def view():
         names[row["id"]] = row["name"]
 
     # Create a list of members who have not imported their calendar
-    not_imported = db.execute("SELECT DISTINCT(name) FROM users JOIN members ON users.id=members.user_id WHERE members.event_id=? AND imported=0", event["id"])
+    not_imported = db.execute(
+        "SELECT DISTINCT(name) FROM users JOIN members ON users.id=members.user_id WHERE members.event_id=? AND imported=0", event["id"])
     if len(not_imported) == 0:
         not_imported = False
     else:
@@ -475,7 +495,8 @@ def view():
             return render_template("view.html", event=event, host=host, unavailable=unavailable, names=names.values(), search=True, not_imported=not_imported)
         else:
             try:
-                start_time = datetime.timedelta(hours=int(request.args.get("start_time_hours")) + int(request.args.get("start_time_noon")), minutes=int(request.args.get("start_time_minutes")))
+                start_time = datetime.timedelta(hours=int(request.args.get(
+                    "start_time_hours")) + int(request.args.get("start_time_noon")), minutes=int(request.args.get("start_time_minutes")))
                 max_events = int(request.args.get("max_events"))
             except:
                 return render_template("apology", message="Invalid search query.")
@@ -506,13 +527,15 @@ def export():
     if request.method == "POST":
 
         # Only the host should be able to finalize an event
-        host = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1", request.form.get("id"), session["user_id"])
+        host = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1", 
+                          request.form.get("id"), session["user_id"])
         if len(host) == 0:
             flash("Only the host can finalize an event")
             return redirect("/")
 
         # Get the credentials
-        creds = db.execute("SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
+        creds = db.execute(
+            "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
         if len(creds) != 1:
             return flask.redirect('authorize')
         creds = credentials_to_dict(creds[0])
@@ -524,9 +547,11 @@ def export():
         update_credentials(credentials, session["user_id"])
 
         # Build the API service
-        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False, developerKey=API_KEY)
+        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION,
+                                                  credentials=credentials, cache_discovery=False, developerKey=API_KEY)
 
-        members = db.execute("SELECT * FROM users WHERE id IN (SELECT user_id FROM members JOIN events ON members.event_id=events.id WHERE events.id=?)", request.form.get("id"))
+        members = db.execute(
+            "SELECT * FROM users WHERE id IN (SELECT user_id FROM members JOIN events ON members.event_id=events.id WHERE events.id=?)", request.form.get("id"))
         event = db.execute("SELECT * FROM events WHERE id=?", request.form.get("id"))[0]
 
         # Create a list of dictionaries with emails associated to the key "email"
@@ -558,8 +583,8 @@ def export():
                 'reminders': {
                     'useDefault': False,
                     'overrides': [
-                    {'method': 'email', 'minutes': 24 * 60},
-                    {'method': 'popup', 'minutes': 10},
+                        {'method': 'email', 'minutes': 24 * 60},
+                        {'method': 'popup', 'minutes': 10},
                     ],
                 },
             }
@@ -587,8 +612,8 @@ def export():
                 'reminders': {
                     'useDefault': False,
                     'overrides': [
-                    {'method': 'email', 'minutes': 24 * 60},
-                    {'method': 'popup', 'minutes': 10},
+                        {'method': 'email', 'minutes': 24 * 60},
+                        {'method': 'popup', 'minutes': 10},
                     ],
                 },
             }
@@ -597,13 +622,16 @@ def export():
         service.events().insert(calendarId='primary', body=calendar_event, sendUpdates="all").execute()
 
         # Update the event in the database to show that is finalized
-        db.execute("UPDATE events SET start=?, end=? WHERE id=?", request.form.get("start"), request.form.get("end"), request.form.get("id"))
+        db.execute("UPDATE events SET start=?, end=? WHERE id=?", request.form.get(
+            "start"), request.form.get("end"), request.form.get("id"))
 
         return redirect("/")
 
     event = db.execute("SELECT * FROM events WHERE id=?", request.args.get("id"))[0]
-    conflicts = db.execute("SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
-    members = db.execute("SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
+    conflicts = db.execute(
+        "SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
+    members = db.execute(
+        "SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
 
     tz = get_timezone(event["timezone"])
 
@@ -614,8 +642,10 @@ def export():
             date = request.args.get("event_date").split("/")
             event_date = datetime.date(int(date[2]), int(date[0]), int(date[1]))
 
-            start_time = datetime.time.fromisoformat(str(int(request.args.get("start_time_hours")) + int(request.args.get("start_time_noon"))).zfill(2) + ":" + request.args.get("start_time_minutes").zfill(2))
-            end_time = datetime.time.fromisoformat(str(int(request.args.get("end_time_hours")) + int(request.args.get("end_time_noon"))).zfill(2) + ":" + request.args.get("end_time_minutes").zfill(2))
+            start_time = datetime.time.fromisoformat(str(int(request.args.get(
+                "start_time_hours")) + int(request.args.get("start_time_noon"))).zfill(2) + ":" + request.args.get("start_time_minutes").zfill(2))
+            end_time = datetime.time.fromisoformat(str(int(request.args.get(
+                "end_time_hours")) + int(request.args.get("end_time_noon"))).zfill(2) + ":" + request.args.get("end_time_minutes").zfill(2))
 
             start_datetime = datetime.datetime.combine(event_date, start_time, tz)
             end_datetime = datetime.datetime.combine(event_date, end_time, tz)

@@ -126,3 +126,11 @@ label {
 [data-toggle="toggle"] {
 	display: none;
 }
+
+.margin-medium {
+  margin-top: 20px;
+}
+
+bold {
+  font-weight: bold;
+}

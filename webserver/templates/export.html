@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+
+
+{% block title %}
+    Export
+{% endblock %}
+
+{% block main %}
+    <div>
+        You have selected the following event date(s) and time for <bold>{{ name }}</bold>:
+        {% if event_date %}
+            {{ event_date }} from {{ start_time }} to {{ end_time }}.
+        {% else %}
+            {{ start_date }} to {{ end_date }}
+        {% endif %}
+    </div>
+    <div>
+        Available Members: {{ available | list_to_string }}
+    </div>
+    <div>
+        Unavailable Members: {{ unavailable | list_to_string }}
+    </div>
+    <form action="/export" method="POST">
+        <label>Export This Event to GCal!</label>
+        <input hidden name="id" value="{{ ID }}">
+        <input hidden name="start" value="{{ start }}">
+        <input hidden name="end" value="{{ end }}">
+        <input type="submit">
+    </form>
+{% endblock %}

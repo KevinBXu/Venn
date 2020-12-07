@@ -4,29 +4,148 @@
     View
 {% endblock %}
 
+{% block script %}
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="/resources/demos/style.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+    //date picker from https://jqueryui.com/datepicker/
+        $( function() {
+            $( ".datepicker" ).datepicker();
+        });
+    </script>
+{% endblock %}
+
 {% block main %}
     <div>
         <h1>{{ event["name"] }}</h1>
     </div>
-    <div class="center">
-        <form action="/view" method="post">
-            <label>Add Your Google Calendar</label>
-            <input type="number" hidden name="id" value="{{ event["id"] }}">
-            <input type="submit" class="small-margin">
-        </form>
+{% if event_period %}
+    <div>
+        <h3>The event has been finalized. It will run {{ event_period }}</h2>
     </div>
     {% if host %}
-    <div>
+    <div class="center margin-medium">
         <form action="/delete" method="GET">
-            <label>Delete the Event</label>
             <input type="number" hidden name="id" value="{{ event["id"] }}">
-            <input type="submit" class="small-margin">
+            <input type="submit" class="small-margin" value="Delete the Event">
         </form>
-    {% endif %}
     </div>
+    {% endif %}
+{% else %}
+    <div>
+        <form action="/view" method="post">
+            <input type="number" hidden name="id" value="{{ event["id"] }}">
+            <input type="submit" class="small-margin" value="Import Google Calendar">
+        </form>
+    </div>
+
+    {% if search %}
+    <div class="center margin-medium">
+        <form action="/view" method="GET">
+            <input type="number" hidden name="id" value="{{ event["id"] }}">
+            Display the top <input type="number" name="max_events" min="1"> closest to
+            <select name="start_time_hours">
+                <option></option>
+            {% for i in range(1,12) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+                <option value="0">12</option>
+            <select>
+            <select name="start_time_minutes">
+                <option></option>
+            {% for i in range(0,60) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+            </select>
+            <select name="start_time_noon">
+                <option></option>
+                <option value="0">AM</option>
+                <option value="12">PM</option>
+            </select>
+            searching by <input type="number" name="interval" min="1"> minutes &nbsp;
+            <input type="submit" class="small-margin" value="Search">
+        </form>
+    </div>
+    {% endif %}
+    {% if host %}
+    <div class="center margin-medium">
+        <form action="/export" method="GET"> <!-- maybe later change the action to a "export to gcals" html -->
+            <input type="number" hidden name="id" value="{{ event["id"] }}">
+            {% if search %}
+            <label>Event Date: </label>
+            <input type="text" class="datepicker" name="event_date">&emsp;
+            <label id="early"> Event Start Time:</label>
+            <select name="start_time_hours">
+            {% for i in range(1,12) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+                <option value="0">12</option>
+            <select>
+            <select name="start_time_minutes">
+            {% for i in range(0,60) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+            </select>
+            <select name="start_time_noon">
+                <option value="0">AM</option>
+                <option value="12">PM</option>
+            </select>&emsp;
+            <label id="late"> Event End Time:</label>
+            <select name="end_time_hours">
+            {% for i in range(1,12) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+                <option value="0">12</option>
+            <select>
+            <select name="end_time_minutes">
+            {% for i in range(60) %}
+                <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+            </select>
+            <select name="end_time_noon">
+                <option value="0">AM</option>
+                <option value="12">PM</option>
+            </select>
+            {% else %}
+            <label>Event Start Date: </label>
+            <input type="text" class="datepicker" name="event_start_date">&emsp;
+            <label>Event End Date: </label>
+            <input type="text" class="datepicker" name="event_end_date">&emsp;
+            {% endif %}<br>
+            Submit to finalize the event and add to everyone's Google Calendar &nbsp;
+            <input type="submit" class="small-margin" value="Finalize Event">
+        </form>
+    </div>
+    <div class="center margin-medium">
+        <form action="/delete" method="GET">
+            <input type="number" hidden name="id" value="{{ event["id"] }}">
+            <input type="submit" class="small-margin" value="Delete the Event">
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="margin-medium">
+        <h4>Members: {{ names | list_to_string }}</h4>
+    </div>
+
+    {% if not_imported %}
+    <div class="margin-medium">
+        <h4 style="color: crimson">Not Imported: {{ not_imported | list_to_string }}</h4>
+    </div>
+    {% endif %}
+
+    {% if search %}
+    <div class="margin-medium">
+        <h5>Click the blue headers to hide the tables</h5>
+    </div>
+    {% endif %}
+
     <div style="position: absolute; left: 10%; right: 10%">
+    {% if unavailable %}
     {% for date in unavailable %}
-        <table style="margin-top: 50px">
+        <table class="margin-medium">
             <tbody class="labels">
                 <td colspan="5">
 					<label for="{{ date }}"><h3>{{ date }}</h3></label>
@@ -54,7 +173,29 @@
             </tbody>
         </table>
     {% endfor %}
+    {% endif %}
+    {% if sort %}
+    <table style="margin-top: 50px">
+            <tr>
+                <td><h4>Event Start</h4></td>
+                <td><h4>Event End</h4></td>
+                <td><h4>Number of Conflicts</h4></td>
+                <td colspan="2"><h4>People Missing</h4></td>
+            </tR>
+    {% for period in sort %}
+            <tr>
+                <td>{{ period["start"] }}</td>
+                <td>{{ period["end"] }}</td>
+                <td>{{ period["people"] | len }}</td>
+                <td colspan="2">
+                    {{ period["people"] | list_to_string }}
+                </td>
+            </tr>
+    {% endfor %}
+    </table>
+    {% endif %}
     </div>
+
     <script>
     // Toggle feature from https://codepen.io/andornagy/pen/gaGBZz
         $(document).ready(function() {
@@ -63,4 +204,5 @@
         	});
         });
     </script>
+{% endif %}
 {% endblock %}

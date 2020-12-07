@@ -13,8 +13,9 @@ from functools import wraps
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
+import math
 
-from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials, best_times, list_to_string, best_times_allday
+from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials, best_times, list_to_string, best_times_allday, timezone, find_conflicts, find_conflicts_allday
 
 # Configure application
 app = Flask(__name__)
@@ -297,15 +298,11 @@ def view():
         # Load credentials from the session.
         credentials = google.oauth2.credentials.Credentials(**creds)
 
-        print(credentials.valid)
-
         # Save credentials back to session in case access token was refreshed.
         # ACTION ITEM: In a production app, you likely want to save these
         #              credentials in a persistent database instead.
         update_credentials(credentials, session["user_id"])
         service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False, developerKey=API_KEY)
-        print(service._http.credentials.token)
-        print('test')
 
         # Gather all calendar IDs
         calendars = []
@@ -345,14 +342,10 @@ def view():
 
                     start = event['start'].get('dateTime')
                     if start == None:
-                        start = event['start'].get('date') + "T00:00:00"
-                    else:
-                        start = start[:19]
+                        start = event['start'].get('date') + "T00:00:00" + event_row[0]["timezone"]
                     end = event['end'].get('dateTime')
                     if end == None:
-                        end = (datetime.date.fromisoformat(event['end'].get('date')) - datetime.timedelta(days=1)).isoformat() + "T23:59:59"
-                    else:
-                        end = end[:19]
+                        end = (datetime.date.fromisoformat(event['end'].get('date')) - datetime.timedelta(days=1)).isoformat() + "T23:59:59" + event_row[0]["timezone"]
 
                     # Put event into database
                     conflict_id = db.execute("INSERT INTO conflicts (user_id, start_time, end_time, google_id) VALUES(?,?,?,?)", session["user_id"], start, end, event["id"])
@@ -363,6 +356,8 @@ def view():
 
                 if len(event_conflict) == 0:
                     db.execute("INSERT INTO event_conflicts (conflict_id, event_id) VALUES(?,?)", conflict_id, request.form.get("id"))
+
+        db.execute("UPDATE members SET imported=1 WHERE user_id=? AND event_id=?", session["user_id"], event_row[0]["id"])
 
         return redirect(flask.url_for("view", id=request.form.get("id")))
 
@@ -383,6 +378,19 @@ def view():
     else:
         host = False
 
+
+    if event["start"] != None:
+
+        if event["start"].find("T") != -1:
+
+            event_period = datetime.datetime.fromisoformat(event["start"]).strftime("%A, %B %d, %Y from %I:%M %p") + " to " + datetime.datetime.fromisoformat(event["start"]).strftime("%I:%M %p")
+
+        else:
+
+            event_period = datetime.date.fromisoformat(event["start"]).strftime("%A, %B %d, %Y") + " to " + datetime.date.fromisoformat(event["end"]).strftime("%A, %B %d, %Y")
+
+        return render_template("view.html", event=event, host=host, event_period=event_period)
+
     # Determine the best times
     conflicts = db.execute("SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
 
@@ -391,6 +399,14 @@ def view():
     names = {}
     for row in rows:
         names[row["id"]] = row["name"]
+
+    not_imported = db.execute("SELECT DISTINCT(name) FROM users JOIN members ON users.id=members.user_id WHERE members.event_id=? AND imported=0", event["id"])
+
+    if len(not_imported) == 0:
+        not_imported = False
+    else:
+        for i in range(len(not_imported)):
+            not_imported[i] = not_imported[i]["name"]
 
     unavailable = {}
 
@@ -407,31 +423,198 @@ def view():
             for user_id in people[time]:
                 period["people"].append(names[user_id])
             unavailable[date].append(period)
+
+        return render_template("view.html", event=event, host=host, unavailable=unavailable, names=names.values(), not_imported=not_imported)
     else:
-        people = best_times(event, conflicts)
-        for time in sorted(people, key=lambda key: (len(people[key]), key)):
-            date = datetime.date(time.year, time.month, time.day).strftime("%A, %B %d, %Y")
-            if date not in unavailable:
-                unavailable[date] = []
-            period = {}
-            period["start"] = time.strftime("%I:%M %p")
-            period["end"] = (time + datetime.timedelta(minutes=int(event["duration"]))).strftime("%I:%M %p")
-            period["people"] = []
-            for user_id in people[time]:
-                period["people"].append(names[user_id])
-            unavailable[date].append(period)
+        if request.args.get("interval") == None or request.args.get("interval") == "":
+            interval = int(math.ceil(int(event["duration"]) / 120) * 10)
+        else:
+            interval = int(request.args.get("interval"))
 
-    return render_template("view.html", event=event, host=host, unavailable=unavailable)
+        people = best_times(event, conflicts, interval)
+
+        if request.args.get("max_events") == None or request.args.get("start_time_hours") == None or request.args.get("start_time_minutes") == None or request.args.get("start_time_noon") == None or request.args.get("max_events") == "" or request.args.get("start_time_hours") == "" or request.args.get("start_time_minutes") == "" or request.args.get("start_time_noon") == "":
+            for time in sorted(people, key=lambda key: (len(people[key]), key)):
+                date = datetime.date(time.year, time.month, time.day).strftime("%A, %B %d, %Y")
+                if date not in unavailable:
+                    unavailable[date] = []
+                period = {}
+                period["start"] = time.strftime("%I:%M %p")
+                period["end"] = (time + datetime.timedelta(minutes=int(event["duration"]))).strftime("%I:%M %p")
+                period["people"] = []
+                for user_id in people[time]:
+                    period["people"].append(names[user_id])
+                unavailable[date].append(period)
+
+            return render_template("view.html", event=event, host=host, unavailable=unavailable, names=names.values(), search=True, not_imported=not_imported)
+        else:
+            start_time = datetime.timedelta(hours=int(request.args.get("start_time_hours")) + int(request.args.get("start_time_noon")), minutes=int(request.args.get("start_time_minutes")))
+
+            max_events = int(request.args.get("max_events"))
+
+            sort = []
+
+            for time in sorted(people, key=lambda key: (len(people[key]), abs(datetime.timedelta(hours=key.hour, minutes=key.minute) - start_time))):
+                period = {}
+                period["start"] = time.strftime("%I:%M %p %A, %B %d, %Y")
+                period["end"] = (time + datetime.timedelta(minutes=int(event["duration"]))).strftime("%I:%M %p %A, %B %d, %Y")
+                period["people"] = []
+                for user_id in people[time]:
+                    period["people"].append(names[user_id])
+                sort.append(period)
+
+                if len(sort) >= max_events:
+                    break
+
+            return render_template("view.html", event=event, host=host, sort=sort, names=names.values(), search=True, not_imported=not_imported)
 
 
-@app.route("/test")
-def test():
-    creds = db.execute("SELECT user_id, token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
-    creds = credentials_to_dict(creds[0])
-    for test in creds:
-        print(test)
-        print(creds[test])
-        print(type(creds[test]))
-    return redirect ("/")
+@app.route("/export", methods=["GET", "POST"])
+@login_required
+def export():
 
+    if request.method == "POST":
+
+        host = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1", request.form.get("id"), session["user_id"])
+
+        if len(host) == 0:
+            flash("Only the host can finalize an event")
+            return redirect("/")
+
+        # export the gcal event
+        creds = db.execute("SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
+        if len(creds) != 1:
+            return flask.redirect('authorize')
+
+        creds = credentials_to_dict(creds[0])
+
+        # Load credentials from the session.
+        credentials = google.oauth2.credentials.Credentials(**creds)
+
+        # Save credentials back to session in case access token was refreshed.
+        # ACTION ITEM: In a production app, you likely want to save these
+        #              credentials in a persistent database instead.
+        update_credentials(credentials, session["user_id"])
+        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, credentials=credentials, cache_discovery=False, developerKey=API_KEY)
+
+        members = db.execute("SELECT * FROM users WHERE id IN (SELECT user_id FROM members JOIN events ON members.event_id=events.id WHERE events.id=?)", request.form.get("id"))
+        event = db.execute("SELECT * FROM events WHERE id=?", request.form.get("id"))[0]
+
+        emails = []
+
+        for member in members:
+            tmp = {}
+            tmp["email"] = member["email"]
+            if member["id"] == session["user_id"]:
+                tmp["organizer"] = True
+            emails.append(tmp)
+
+        if request.form.get("start").find("T") != -1:
+            # from https://developers.google.com/calendar/v3/reference/events/insert
+            calendar_event = {
+                'creator': {
+                    'self': True
+                },
+                'organizer': {
+                    'self': True
+                },
+                'summary': event["name"],
+                'start': {
+                    'dateTime': request.form.get("start"),
+                },
+                'end': {
+                    'dateTime': request.form.get("end"),
+                },
+                'attendees': emails,
+                'reminders': {
+                    'useDefault': False,
+                    'overrides': [
+                    {'method': 'email', 'minutes': 24 * 60},
+                    {'method': 'popup', 'minutes': 10},
+                    ],
+                },
+            }
+
+        else:
+
+            tz = service.settings().get(setting='timezone').execute()["value"]
+
+            calendar_event = {
+                'creator': {
+                    'self': True
+                },
+                'organizer': {
+                    'self': True
+                },
+                'summary': event["name"],
+                'start': {
+                    'date': request.form.get("start"),
+                    'timezone': tz,
+                },
+                'end': {
+                    'date': request.form.get("end"),
+                    'timezone': tz,
+                },
+                'attendees': emails,
+                'reminders': {
+                    'useDefault': False,
+                    'overrides': [
+                    {'method': 'email', 'minutes': 24 * 60},
+                    {'method': 'popup', 'minutes': 10},
+                    ],
+                },
+            }
+
+        service.events().insert(calendarId='primary', body=calendar_event).execute()
+
+        db.execute("UPDATE events SET start=?, end=? WHERE id=?", request.form.get("start"), request.form.get("end"), request.form.get("id"))
+
+        return redirect("/")
+
+    event = db.execute("SELECT * FROM events WHERE id=?", request.args.get("id"))[0]
+    conflicts = db.execute("SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
+    members = db.execute("SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
+    tz = timezone(event["timezone"])
+
+    if request.args.get("event_date") != None:
+        date = request.args.get("event_date").split("/")
+        event_date = datetime.date(int(date[2]), int(date[0]), int(date[1]))
+
+        start_time = datetime.time.fromisoformat(str(int(request.args.get("start_time_hours")) + int(request.args.get("start_time_noon"))).zfill(2) + ":" + request.args.get("start_time_minutes").zfill(2))
+        end_time = datetime.time.fromisoformat(str(int(request.args.get("end_time_hours")) + int(request.args.get("end_time_noon"))).zfill(2) + ":" + request.args.get("end_time_minutes").zfill(2))
+
+        start_datetime = datetime.datetime.combine(event_date, start_time, tz)
+        end_datetime = datetime.datetime.combine(event_date, end_time, tz)
+
+        unavailable = find_conflicts(start_datetime, end_datetime, conflicts, tz)
+
+        available = set()
+
+        for member in members:
+            if member["id"] not in unavailable:
+                available.add(member["name"])
+            else:
+                unavailable.add(member["name"])
+                unavailable.remove(member["id"])
+
+        return render_template("export.html", event_date=event_date.strftime("%A, %B %d, %Y"), start_time=start_time.strftime("%I:%M %p"), end_time=end_time.strftime("%I:%M %p"), available=list(available), unavailable=list(unavailable), name=event["name"], start=start_datetime.isoformat(), end=end_datetime.isoformat(), ID=event["id"])
+    else:
+        date = request.args.get("event_start_date").split("/")
+        start_date = datetime.date(int(date[2]), int(date[0]), int(date[1]))
+
+        date = request.args.get("event_end_date").split("/")
+        end_date = datetime.date(int(date[2]), int(date[0]), int(date[1]))
+
+        unavailable = find_conflicts_allday(start_date, end_date, conflicts, tz)
+
+        available = set()
+
+        for member in members:
+            if member["id"] not in unavailable:
+                available.add(member["name"])
+            else:
+                unavailable.add(member["name"])
+                unavailable.remove(member["id"])
+
+        return render_template("export.html", start_date=start_date.strftime("%A, %B %d, %Y"), end_date=end_date.strftime("%A, %B %d, %Y"), available=list(available), unavailable=list(unavailable), name=event["name"], start=start_date.isoformat(), end=end_date.isoformat(), ID=event["id"])
 

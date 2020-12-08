@@ -31,7 +31,7 @@ def after_request(response):
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
     return response
-    
+
 
 # Custom filter
 app.jinja_env.filters["len"] = len
@@ -78,7 +78,12 @@ def index():
 
 
 @app.route('/authorize')
+@login_required
 def authorize():
+
+    # Get the user's email
+    email = db.execute("SELECT email FROM users WHERE id=?", session["user_id"])[0]["email"]
+
     # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, scopes=SCOPES)
@@ -96,7 +101,8 @@ def authorize():
     tmp_url, state = flow.authorization_url(
         # Enable offline access so that you can refresh an access token without
         # re-prompting the user for permission. Recommended for web server apps.
-        access_type='offline'
+        access_type='offline',
+        login_hint=email
     )
 
     if "http:" in tmp_url:
@@ -110,6 +116,7 @@ def authorize():
 
 
 @app.route('/oauth2callback')
+@login_required
 def oauth2callback():
     # Specify the state when creating the flow in the callback so that it can
     # verified in the authorization server response.
@@ -127,7 +134,10 @@ def oauth2callback():
     if "http:" in tmp_url:
         tmp_url = "https:" + tmp_url[5:]
     authorization_response = tmp_url
-    flow.fetch_token(authorization_response=authorization_response)
+    try:
+        flow.fetch_token(authorization_response=authorization_response)
+    except:
+        return render_template("apology.html", message="Please grant access to the google calendar in order to view an event page.")
 
     # Store the credentials in venn.db
     credentials = flow.credentials
@@ -319,7 +329,7 @@ def join():
 def view():
     """ View an event """
     # Check that the event ID is valid
-    event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)", 
+    event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)",
                        request.args.get("id"), session["user_id"])
     if len(event) == 0:
         flash("Not a valid event")
@@ -342,7 +352,7 @@ def view():
         update_credentials(credentials, session["user_id"])
 
         # Build the API requests object
-        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION, 
+        service = googleapiclient.discovery.build(API_SERVICE_NAME, API_VERSION,
                                                   credentials=credentials, cache_discovery=False, developerKey=API_KEY)
 
         # Gather all calendar IDs
@@ -391,11 +401,11 @@ def view():
                     conflict_id = row[0]["id"]
 
                 # Check that the conflict is not already associated with an event
-                event_conflict = db.execute("SELECT * FROM event_conflicts WHERE conflict_id=? AND event_id=?", 
+                event_conflict = db.execute("SELECT * FROM event_conflicts WHERE conflict_id=? AND event_id=?",
                                             conflict_id, request.form.get("id"))
                 if len(event_conflict) == 0:
                     # Add the conflict into the event
-                    db.execute("INSERT INTO event_conflicts (conflict_id, event_id) VALUES(?,?)", 
+                    db.execute("INSERT INTO event_conflicts (conflict_id, event_id) VALUES(?,?)",
                                conflict_id, request.form.get("id"))
 
         # Update members to track that the user has imported their calendar
@@ -527,7 +537,7 @@ def export():
     if request.method == "POST":
 
         # Only the host should be able to finalize an event
-        host = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1", 
+        host = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1",
                           request.form.get("id"), session["user_id"])
         if len(host) == 0:
             flash("Only the host can finalize an event")

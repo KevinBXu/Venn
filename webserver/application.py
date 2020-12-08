@@ -163,12 +163,12 @@ def login():
 
         session["user_id"] = rows[0]["id"]
 
-        if session.get("current") is None:
+        if session.get("next") is None:
             return redirect("/")
         else:
-            return redirect(session.get("current"))
-    else:
-        return render_template("login.html")
+            return redirect(session.get("next"))
+
+    return render_template("login.html")
 
 
 @app.route("/logout")
@@ -304,15 +304,11 @@ def delete():
 
 
 @app.route("/join", methods=["GET", "POST"])
+@login_required
 def join():
 
     """Join an Event"""
     if request.method == "POST":
-
-        # If user is not logged in, then redirect to login, saving the url
-        if session.get("user_id") is None:
-            session["current"] = flask.url_for("join", id=request.form.get("id"))
-            return redirect("/login")
 
         rows = db.execute("SELECT * FROM events WHERE id=?", request.form.get("id"))
 
@@ -330,11 +326,6 @@ def join():
 
         # Redirect user to view page if successfully joined
         return redirect(flask.url_for("view", id=request.form.get("id")))
-
-    # If user is not logged in, then redirect to login, saving the url
-    if session.get("user_id") is None:
-        session["current"] = flask.url_for("join", id=request.args.get("id"))
-        return redirect("/login")
 
     return render_template("join.html", ID=request.args.get("id"))
 

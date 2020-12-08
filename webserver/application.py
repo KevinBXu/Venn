@@ -139,7 +139,7 @@ def oauth2callback():
     try:
         flow.fetch_token(authorization_response=authorization_response)
     except:
-        return render_template("apology.html", message="Please grant access to the google calendar in order to view an event page.")
+        return render_template("apology.html", message="Please grant access to the google calendar.")
 
     # Store the credentials in venn.db
     credentials = flow.credentials
@@ -338,11 +338,21 @@ def join():
 def view():
     """ View an event """
     # If the user is attempting to import their google calendar
-    if request.method == "POST":
+    if request.method == "POST" or session.get("event_id"):
+
+        # Get the event_id
+        if session.get("event_id"):
+            ID = session["event_id"]
+            del session["event_id"]
+        else:
+            try:
+                ID = request.form.get("id")
+            except:
+                return render_template("apology.html", message="Invalid Event")
 
         # Check that the event ID is valid
         event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)",
-                           request.form.get("id"), session["user_id"])
+                           ID, session["user_id"])
         if len(event) == 0:
             flash("Not a valid event")
             return redirect("/")
@@ -352,7 +362,8 @@ def view():
         creds = db.execute(
             "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
         if len(creds) != 1:
-            session["next"] = flask.url_for("view", id=request.form.get("id"))
+            session["next"] = flask.url_for("view", id=event["id"])
+            session["event_id"] = event["id"]
             return flask.redirect('authorize')
 
         # Load credentials from the database
@@ -413,16 +424,16 @@ def view():
 
                 # Check that the conflict is not already associated with an event
                 event_conflict = db.execute("SELECT * FROM event_conflicts WHERE conflict_id=? AND event_id=?",
-                                            conflict_id, request.form.get("id"))
+                                            conflict_id, event["id"])
                 if len(event_conflict) == 0:
                     # Add the conflict into the event
                     db.execute("INSERT INTO event_conflicts (conflict_id, event_id) VALUES(?,?)",
-                               conflict_id, request.form.get("id"))
+                               conflict_id, event["id"])
 
         # Update members to track that the user has imported their calendar
         db.execute("UPDATE members SET imported=1 WHERE user_id=? AND event_id=?", session["user_id"], event["id"])
 
-        return redirect(flask.url_for("view", id=request.form.get("id")))
+        return redirect(flask.url_for("view", id=event["id"]))
 
     # Check that the event ID is valid
     event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)",
@@ -553,11 +564,27 @@ def view():
 @login_required
 def export():
 
-    if request.method == "POST":
+    if request.method == "POST" or session.get("event_id"):
+
+        # Get the event_id
+        if session.get("event_id"):
+            ID = session["event_id"]
+            start = session["start"]
+            end = session["end"]
+            del session["event_id"]
+            del session["start"]
+            del session["end"]
+        else:
+            try:
+                ID = request.form.get("id")
+                start = request.form.get("start")
+                end = request.form.get("end")
+            except:
+                return render_template("apology.html", message="Invalid Format")
 
         # Only the host should be able to finalize an event
         host = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1",
-                          request.form.get("id"), session["user_id"])
+                          ID, session["user_id"])
         if len(host) == 0:
             flash("Only the host can finalize an event")
             return redirect("/")
@@ -566,7 +593,10 @@ def export():
         creds = db.execute(
             "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
         if len(creds) != 1:
-            session["next"] = flask.url_for("view", id=request.form.get("id"))
+            session["next"] = flask.url_for("export")
+            session["event_id"] = request.form.get("id")
+            session["start"] = request.form.get("start")
+            session["end"] = request.form.get("end")
             return flask.redirect('authorize')
         creds = credentials_to_dict(creds[0])
 
@@ -581,8 +611,8 @@ def export():
                                                   credentials=credentials, cache_discovery=False, developerKey=API_KEY)
 
         members = db.execute(
-            "SELECT * FROM users WHERE id IN (SELECT user_id FROM members JOIN events ON members.event_id=events.id WHERE events.id=?)", request.form.get("id"))
-        event = db.execute("SELECT * FROM events WHERE id=?", request.form.get("id"))[0]
+            "SELECT * FROM users WHERE id IN (SELECT user_id FROM members JOIN events ON members.event_id=events.id WHERE events.id=?)", ID)
+        event = db.execute("SELECT * FROM events WHERE id=?", ID)[0]
 
         # Create a list of dictionaries with emails associated to the key "email"
         emails = []
@@ -593,7 +623,7 @@ def export():
                 tmp["organizer"] = True
             emails.append(tmp)
 
-        if request.form.get("start").find("T") != -1:
+        if start.find("T") != -1:
             # Form the https request body (template from https://developers.google.com/calendar/v3/reference/events/insert)
             calendar_event = {
                 'creator': {
@@ -604,10 +634,10 @@ def export():
                 },
                 'summary': event["name"],
                 'start': {
-                    'dateTime': request.form.get("start"),
+                    'dateTime': start,
                 },
                 'end': {
-                    'dateTime': request.form.get("end"),
+                    'dateTime': end,
                 },
                 'attendees': emails,
                 'reminders': {
@@ -631,11 +661,11 @@ def export():
                 },
                 'summary': event["name"],
                 'start': {
-                    'date': request.form.get("start"),
+                    'date': start,
                     'timezone': tz,
                 },
                 'end': {
-                    'date': request.form.get("end"),
+                    'date': end,
                     'timezone': tz,
                 },
                 'attendees': emails,
@@ -652,16 +682,26 @@ def export():
         service.events().insert(calendarId='primary', body=calendar_event, sendUpdates="all").execute()
 
         # Update the event in the database to show that is finalized
-        db.execute("UPDATE events SET start=?, end=? WHERE id=?", request.form.get(
-            "start"), request.form.get("end"), request.form.get("id"))
+        db.execute("UPDATE events SET start=?, end=? WHERE id=?", start, end, event["id"])
 
-        return redirect("/")
+        return redirect(flask.url_for("view", id=event["id"]))
 
-    event = db.execute("SELECT * FROM events WHERE id=?", request.args.get("id"))[0]
+    # Check valid event
+    event = db.execute("SELECT * FROM events WHERE id=?", request.args.get("id"))
+    if len(event) == 0:
+        return render_template("apology.html", message="Invalid event.")
+    event = event[0]
     conflicts = db.execute(
         "SELECT * FROM conflicts WHERE id IN (SELECT conflict_id FROM event_conflicts WHERE event_id=?)", request.args.get("id"))
     members = db.execute(
         "SELECT * FROM users WHERE id IN (SELECT members.user_id FROM members JOIN events ON events.id=members.event_id WHERE events.id=?)", event["id"])
+
+    # Only the host should be able to finalize an event
+    host = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1",
+                      request.args.get("id"), session["user_id"])
+    if len(host) == 0:
+        flash("Only the host can finalize an event")
+        return redirect("/")
 
     tz = get_timezone(event["timezone"])
 

@@ -4,9 +4,38 @@
     Index
 {% endblock %}
 
+{% block script %}
+    <script>
+      // Searches for the anime
+      function searchEvents()
+      {
+        list = document.querySelectorAll("tbody tr");
+        search = document.getElementById("search").value.toLowerCase();
+        for (let element of list)
+        {
+          // search() returns -1 if the search is not a substring
+          if (element.cells[0].children[0].innerHTML.toLowerCase().search(search) != -1)
+          {
+              element.style.display = "table-row";
+          }
+          else
+          {
+              element.style.display = "none";
+          }
+        }
+      }
+    </script>
+{% endblock %}
+
 {% block main %}
     <div class="center">
         <h1>Welcome to Venn, {{ name }}!</h1>
+    </div>
+    <div>
+        <form>
+          <input autocomplete="off" autofocus id="search" placeholder="Search" type="text">
+          <input type="submit" onsubmit="searchEvents(); return false;">
+        </form>
     </div>
     <div style="position: absolute; left: 10%; right: 10%" class="center margins">
         <table>
@@ -18,13 +47,16 @@
                     <td colspan="2">Link (click to copy!)</td>
                 </tr>
             </thead>
+            <tbody>
             {% for event in events %}
             <tr>
                 <td><a href="{{ event["view"] }}">{{ event["name"] }}</a></td>
                 <td>{{ event["start_date"] }}</td>
                 <td>{{ event["end_date"] }}</td>
                 <td colspan="2"><a href="#" class="linkcopy">{{ event["link"] }}</a></td>
+            </tr>
             {% endfor %}
+            </tbody>
         </table>
     </div>
     <!-- From https://codepen.io/ix4/pen/povebzM -->

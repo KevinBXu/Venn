@@ -53,7 +53,7 @@ def check_chronology(start_time, end_time):
 # Adds the credentials to venn.db
 def credentials_to_database(credentials, user_id):
     db = SQL("sqlite:///venn.db")
-    db.execute("INSERT INTO credentials (user_id, token, refresh_token, token_uri, client_id, client_secret, scopes) VALUES(?,?,?,?,?,?,?)", user_id, 
+    db.execute("INSERT INTO credentials (user_id, token, refresh_token, token_uri, client_id, client_secret, scopes) VALUES(?,?,?,?,?,?,?)", user_id,
                credentials.token, credentials.refresh_token, credentials.token_uri, credentials.client_id, credentials.client_secret, credentials.scopes[0])
     return credentials
 
@@ -75,6 +75,14 @@ def update_credentials(credentials, user_id):
 # Change a list to a comma separated string
 def list_to_string(unavailable):
     return ', '.join(sorted(unavailable))
+
+
+def format_date_readable(date):
+    return datetime.date.fromisoformat(date).strftime("%A, %B %d, %Y")
+
+
+def format_date(date):
+    return datetime.date.fromisoformat(date).strftime("%m/%d/%Y")
 
 
 # Adds leading zeros to num

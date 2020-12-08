@@ -10,10 +10,38 @@
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <script>
-    //date picker from https://jqueryui.com/datepicker/
+        //date picker from https://jqueryui.com/datepicker/
         $( function() {
             $( ".datepicker" ).datepicker();
         });
+
+
+        function searchDays()
+        {
+            list = document.querySelectorAll(".labels");
+            search = document.getElementById("search").value;
+            for (let element of list)
+            {
+                if (search == "")
+                {
+                    element.style.display = "table-row-group";
+                    element.nextSibling.nextSibling.style.display = "table-row-group";
+                }
+                // search() returns -1 if the search is not a substring
+                else if (element.children[0].children[0].children[1].id == search)
+                {
+                    element.style.display = "table-row-group";
+                    element.nextSibling.nextSibling.style.display = "table-row-group";
+                }
+                else
+                {
+                    element.style.display = "none";
+                    element.nextSibling.nextSibling.style.display = "none";
+                }
+            }
+            return false;
+        }
+
     </script>
 {% endblock %}
 
@@ -40,7 +68,13 @@
             <input type="submit" class="small-margin" value="Import Google Calendar">
         </form>
     </div>
-
+    <div>
+        <form style="display: inline-block">
+            Filter By Date:
+            <input type="text" class="datepicker" id="search">
+        </form>
+        <button onclick="searchDays(); return false;">Search</button>
+    </div>
     {% if search %}
     <div class="center margin-medium">
         <form action="/view" method="GET">
@@ -148,8 +182,8 @@
         <table class="margin-medium">
             <tbody class="labels">
                 <td colspan="5">
-					<label for="{{ date }}"><h3>{{ date }}</h3></label>
-					<input type="checkbox" name="{{ date }}" id="{{ date }}" data-toggle="toggle">
+					<label for="{{ date | format_date }}"><h3>{{ date | format_date_readable }}</h3></label>
+					<input type="checkbox" id="{{ date | format_date }}" data-toggle="toggle">
 				</td>
             </tbody>
             <tbody class="hide">

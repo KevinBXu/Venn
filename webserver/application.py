@@ -15,7 +15,7 @@ import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import math
 
-from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials, best_times, list_to_string, best_times_allday, get_timezone, find_conflicts, find_conflicts_allday, fill, dst_start, dst_end
+from helpers import login_required, check_time, check_chronology, credentials_to_database, credentials_to_dict, update_credentials, best_times, list_to_string, best_times_allday, get_timezone, find_conflicts, find_conflicts_allday, fill, dst_start, dst_end, format_date, format_date_readable
 
 # Configure application
 app = Flask(__name__)
@@ -37,6 +37,8 @@ def after_request(response):
 app.jinja_env.filters["len"] = len
 app.jinja_env.filters["list_to_string"] = list_to_string
 app.jinja_env.filters["fill"] = fill
+app.jinja_env.filters["format_date"] = format_date
+app.jinja_env.filters["format_date_readable"] = format_date_readable
 
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_FILE_DIR"] = mkdtemp()
@@ -161,7 +163,10 @@ def login():
 
         session["user_id"] = rows[0]["id"]
 
-        return redirect("/")
+        if session.get("current") is None:
+            return redirect("/")
+        else:
+            return redirect(session.get("current"))
     else:
         return render_template("login.html")
 
@@ -245,7 +250,7 @@ def create():
 
         db.execute("INSERT INTO members (event_id, user_id, host) VALUES(?,?,?)", event_id, session["user_id"], True)
 
-        url = flask.url_for("join", _external=True) + "?id=" + str(event_id)
+        url = flask.url_for("join", _external=True, id=event_id)
 
         return render_template("created.html", URL=url, PASSWORD=request.form.get("password"))
 
@@ -299,10 +304,15 @@ def delete():
 
 
 @app.route("/join", methods=["GET", "POST"])
-@login_required
 def join():
+
     """Join an Event"""
     if request.method == "POST":
+
+        # If user is not logged in, then redirect to login, saving the url
+        if session.get("user_id") is None:
+            session["current"] = flask.url_for("join", id=request.form.get("id"))
+            return redirect("/login")
 
         rows = db.execute("SELECT * FROM events WHERE id=?", request.form.get("id"))
 
@@ -320,6 +330,11 @@ def join():
 
         # Redirect user to view page if successfully joined
         return redirect(flask.url_for("view", id=request.form.get("id")))
+
+    # If user is not logged in, then redirect to login, saving the url
+    if session.get("user_id") is None:
+        session["current"] = flask.url_for("join", id=request.args.get("id"))
+        return redirect("/login")
 
     return render_template("join.html", ID=request.args.get("id"))
 
@@ -462,7 +477,7 @@ def view():
         # We convert the dates to ISO format and the IDs to names
         people = best_times_allday(event, conflicts)
         for time in sorted(people):
-            date = datetime.date(time.year, time.month, time.day).strftime("%A, %B %d, %Y")
+            date = datetime.date(time.year, time.month, time.day).isoformat()
             if date not in unavailable:
                 unavailable[date] = []
             period = {}
@@ -491,7 +506,7 @@ def view():
         if request.args.get("max_events") == None or request.args.get("start_time_hours") == None or request.args.get("start_time_minutes") == None or request.args.get("start_time_noon") == None or request.args.get("max_events") == "" or request.args.get("start_time_hours") == "" or request.args.get("start_time_minutes") == "" or request.args.get("start_time_noon") == "":
             # We sort the dictionary by the best availability on each day and then convert the datetimes to ISO format and the IDs to name
             for time in sorted(people, key=lambda key: (len(people[key]), key)):
-                date = datetime.date(time.year, time.month, time.day).strftime("%A, %B %d, %Y")
+                date = datetime.date(time.year, time.month, time.day).isoformat()
                 if date not in unavailable:
                     unavailable[date] = []
                 period = {}

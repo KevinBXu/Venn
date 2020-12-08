@@ -80,6 +80,10 @@ tbody tr:nth-of-type(odd) {
     background-color: rgb(179, 208, 255, 0.3)
 }
 
+tbody tr:nth-of-type(even) {
+    background-color: rgb(134, 126, 225, 0.3)
+}
+
 #select {
     width: 205px;
 }

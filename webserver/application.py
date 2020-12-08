@@ -145,7 +145,10 @@ def oauth2callback():
     credentials = flow.credentials
     credentials_to_database(credentials, session["user_id"])
 
-    return flask.redirect("/")
+    if session.get("next") is None:
+        return redirect("/")
+    else:
+        return redirect(session.get("next"))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -334,22 +337,24 @@ def join():
 @login_required
 def view():
     """ View an event """
-    # Check that the event ID is valid
-    event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)",
-                       request.args.get("id"), session["user_id"])
-    if len(event) == 0:
-        flash("Not a valid event")
-        return redirect("/")
-    event = event[0]
-
-    # Their google credentials must exist in order to access a view page
-    creds = db.execute(
-        "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
-    if len(creds) != 1:
-        return flask.redirect('authorize')
-
     # If the user is attempting to import their google calendar
     if request.method == "POST":
+
+        # Check that the event ID is valid
+        event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)",
+                           request.form.get("id"), session["user_id"])
+        if len(event) == 0:
+            flash("Not a valid event")
+            return redirect("/")
+        event = event[0]
+
+        # Grab the google credentials
+        creds = db.execute(
+            "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
+        if len(creds) != 1:
+            session["next"] = flask.url_for("view", id=request.form.get("id"))
+            return flask.redirect('authorize')
+
         # Load credentials from the database
         creds = credentials_to_dict(creds[0])
         credentials = google.oauth2.credentials.Credentials(**creds)
@@ -418,6 +423,14 @@ def view():
         db.execute("UPDATE members SET imported=1 WHERE user_id=? AND event_id=?", session["user_id"], event["id"])
 
         return redirect(flask.url_for("view", id=request.form.get("id")))
+
+    # Check that the event ID is valid
+    event = db.execute("SELECT * FROM events WHERE id=? AND id IN (SELECT event_id FROM members JOIN users ON members.user_id=users.id WHERE users.id=?)",
+                       request.args.get("id"), session["user_id"])
+    if len(event) == 0:
+        flash("Not a valid event")
+        return redirect("/")
+    event = event[0]
 
     # Check if the user is the host
     rows = db.execute("SELECT * FROM members WHERE event_id=? AND user_id=? AND host=1", event["id"], session["user_id"])
@@ -553,6 +566,7 @@ def export():
         creds = db.execute(
             "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes FROM credentials WHERE user_id=?", session["user_id"])
         if len(creds) != 1:
+            session["next"] = flask.url_for("view", id=request.form.get("id"))
             return flask.redirect('authorize')
         creds = credentials_to_dict(creds[0])
 

@@ -27,31 +27,6 @@ def login_required(f):
     return decorated_function
 
 
-def check_time(time):
-    parts = time.split(':')
-
-    if len(parts) != 2 or len(parts[0]) != 2 or len(parts[1]) != 2:
-        return False
-
-    try:
-        if 0 <= int(parts[0]) and int(parts[0]) < 24 and 0 <= int(parts[1]) and int(parts[1]) < 60:
-            return True
-        else:
-            return False
-    except:
-        return False
-
-
-# Returns True if start_time is earlier in time that end_time
-def check_chronology(start_time, end_time):
-    if int(start_time.split(":")[0]) > int(end_time.split(":")[0]):
-        return False
-    elif int(start_time.split(":")[0]) == int(end_time.split(":")[0]):
-        if int(start_time.split(":")[1]) > int(end_time.split(":")[1]):
-            return False
-    return True
-
-
 # Adds the credentials to venn.db
 def credentials_to_database(credentials, user_id):
     db = SQL("sqlite:///venn.db")
@@ -233,7 +208,7 @@ def best_times(event, conflicts, interval):
         end_index = -1
 
         # For each datetime incrementation
-        while dtime < end:
+        while dtime <= end:
             people[dtime] = set()
 
             # Finds new start_index
@@ -305,19 +280,19 @@ def best_times_allday(event, conflicts):
     people = {}
 
     # For each day
-    while date <= end_date:
+    while date + duration <= end_date:
 
         people[date] = set()
         for conflict in conflicts:
 
             start = datetime.datetime.fromisoformat(conflict["start_time"]).astimezone(get_timezone(event["timezone"]))
-            start_date = datetime.date(start.year, start.month, start.day)
+            start = datetime.date(start.year, start.month, start.day)
 
             end = datetime.datetime.fromisoformat(conflict["end_time"]).astimezone(get_timezone(event["timezone"]))
-            end_date = datetime.date(start.year, start.month, start.day)
+            end = datetime.date(end.year, end.month, end.day)
 
             # Overlap logic from https://stackoverflow.com/questions/13513932/algorithm-to-detect-overlapping-periods
-            if start_date <= date + duration and end_date >= date:
+            if start <= date + duration and end >= date:
                 people[date].add(conflict["user_id"])
 
         date += datetime.timedelta(days=1)
@@ -346,7 +321,7 @@ def find_conflicts(start_datetime, end_datetime, conflicts, timezone):
         end = datetime.datetime.fromisoformat(conflict["end_time"]).astimezone(timezone)
 
         # Overlap logic from https://stackoverflow.com/questions/13513932/algorithm-to-detect-overlapping-periods
-        if start_datetime <= end and end_datetime >= start:
+        if start_datetime < end and end_datetime > start:
             unavailable.add(conflict["user_id"])
 
     return unavailable
@@ -365,7 +340,7 @@ def find_conflicts_allday(start_date, end_date, conflicts, timezone):
         conflict_end = datetime.date(start.year, start.month, start.day)
 
         # Overlap logic from https://stackoverflow.com/questions/13513932/algorithm-to-detect-overlapping-periods
-        if start_date <= conflict_end and end_date >= conflict_start:
+        if start_date < conflict_end and end_date > conflict_start:
             unavailable.add(conflict["user_id"])
 
     return unavailable

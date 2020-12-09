@@ -485,6 +485,7 @@ def view():
         # best_times_allday returns a dictionary with keys as dates and values as a set of IDs
         # We convert the dates to ISO format and the IDs to names
         people = best_times_allday(event, conflicts)
+        print(people)
         for time in sorted(people):
             date = datetime.date(time.year, time.month, time.day).isoformat()
             if date not in unavailable:
@@ -496,6 +497,7 @@ def view():
             for user_id in people[time]:
                 period["people"].append(names[user_id])
             unavailable[date].append(period)
+        print(unavailable)
         return render_template("view.html", event=event, host=host, unavailable=unavailable, names=names.values(), not_imported=not_imported)
     else:
         if request.args.get("interval") == None or request.args.get("interval") == "":
@@ -513,7 +515,7 @@ def view():
         # Check if the search request is valid
         if request.args.get("max_events") == None or request.args.get("start_time_hours") == None or request.args.get("start_time_minutes") == None or request.args.get("start_time_noon") == None or request.args.get("max_events") == "" or request.args.get("start_time_hours") == "" or request.args.get("start_time_minutes") == "" or request.args.get("start_time_noon") == "":
             # We sort the dictionary by the best availability on each day and then convert the datetimes to ISO format and the IDs to name
-            for time in sorted(people, key=lambda key: (datetime.date(key.year, key.month, key.day), len(people[key]), key)):
+            for time in sorted(people, key=lambda key: (len(people[key]), key)):
                 date = datetime.date(time.year, time.month, time.day).isoformat()
                 if date not in unavailable:
                     unavailable[date] = []

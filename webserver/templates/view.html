@@ -51,7 +51,7 @@
     </div>
 {% if event_period %}
     <div>
-        <h3>The event has been finalized. It will run {{ event_period }}</h2>
+        <h3>The event has been finalized. It will run {{ event_period }}.</h2>
     </div>
     {% if host %}
     <div class="center margin-medium">
@@ -119,7 +119,7 @@
             <select>
             <select name="start_time_minutes">
             {% for i in range(0,60) %}
-                <option value="{{ i }}">{{ i }}</option>
+                <option value="{{ i }}">{{ i | fill }}</option>
             {% endfor %}
             </select>
             <select name="start_time_noon">
@@ -135,7 +135,7 @@
             <select>
             <select name="end_time_minutes">
             {% for i in range(60) %}
-                <option value="{{ i }}">{{ i }}</option>
+                <option value="{{ i }}">{{ i | fill }}</option>
             {% endfor %}
             </select>
             <select name="end_time_noon">

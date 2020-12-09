@@ -7,25 +7,36 @@
 {% endblock %}
 
 {% block main %}
-    <div>
-        You have selected the following event date(s) and time for <bold>{{ name }}</bold>:
+    <div class="center margin-medium">
+        <h2>You have selected the following event date(s) and time for <br><fancy>{{ name }}</fancy>:</h2>
+    </div>
+    <div class="center margin-medium">
         {% if event_date %}
-            {{ event_date }} from {{ start_time }} to {{ end_time }}.
+            <h3>{{ event_date }} from {{ start_time }} to {{ end_time }}</h3>
         {% else %}
-            {{ start_date }} to {{ end_date }}
+            <h3>{{ start_date }} to {{ end_date }}</h3>
         {% endif %}
     </div>
-    <div>
-        Available Members: {{ available | list_to_string }}
-    </div>
-    <div>
-        Unavailable Members: {{ unavailable | list_to_string }}
-    </div>
     <form action="/export" method="POST">
-        <label>Export This Event to GCal!</label>
         <input hidden name="id" value="{{ ID }}">
         <input hidden name="start" value="{{ start }}">
         <input hidden name="end" value="{{ end }}">
-        <input type="submit">
+        <input type="submit" value="Export This Event to Google Calendar">
     </form>
+    <div class="list">
+        <ul>
+            <h3 style="color: DarkGreen">Available Members:</h3>
+            {% for person in available %}
+            <li><h4>{{ person }}</h4></li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="list">
+        <ul>
+            <h3 style="color: DarkRed">Unavailable Members:</h3>
+            {% for person in unavailable %}
+            <li><h4>{{ person }}</h4></li>
+            {% endfor %}
+        </ul>
+    </div>
 {% endblock %}

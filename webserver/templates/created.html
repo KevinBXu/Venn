@@ -5,9 +5,47 @@
 {% endblock %}
 
 {% block main %}
-    <div class="center">
-        Your event has been created. Here is the link to your event's information: <br>
-        {{ URL }} <br>
-        Password: {{ PASSWORD }}
+    <div class="center margin-medium">
+        <h3>Your event has been created. Here is the link to your event's information:</h3>
     </div>
+    <div class="center margin-medium">
+        <h5><a href="#" class="linkcopy">{{ url_for("join", _external=True, id=ID) }}</a> (Click to Copy)</h5>
+    </div>
+    <div class="center margin-medium">
+        <h5>Remember This Password: {{ PASSWORD }}</h5>
+    </div>
+    <div class="center margin-medium">
+        <form method="GET" action="/view">
+            <input hidden value="{{ ID }}" name="id">
+            <input type="submit" value="Go To Event Page">
+        </form>
+    </div>
+
+    <script>
+        const links = document.querySelectorAll('.linkcopy');
+
+        const copyToClipboard = str => {
+          const el = document.createElement('input');
+          str.dataset.copyString ? el.value = str.dataset.copyString : el.value = str.text;
+          el.setAttribute('readonly', '');
+          el.style.position = 'absolute';
+          el.style.opacity = 0;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+        }
+
+        const clickInteraction = (e) => {
+          e.preventDefault();
+          copyToClipboard(e.target);
+          e.target.classList.add(cls.copied);
+          setTimeout(() => e.target.classList.remove(cls.copied), 1000);
+          setTimeout(() => e.target.classList.remove(cls.hover), 700);
+        }
+
+        Array.from(links).forEach(link => {
+          link.addEventListener('click', e => clickInteraction(e));
+        });
+    </script>
 {% endblock %}

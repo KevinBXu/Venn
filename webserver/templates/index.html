@@ -13,15 +13,16 @@
         search = document.getElementById("search").value.toLowerCase();
         for (let element of list)
         {
-          // search() returns -1 if the search is not a substring
-          if (element.cells[0].children[0].innerHTML.toLowerCase().search(search) != -1)
-          {
-              element.style.display = "table-row";
-          }
-          else
-          {
-              element.style.display = "none";
-          }
+            console.log(element.cells[0].children[0].innerHTML.toLowerCase())
+            // search() returns -1 if the search is not a substring
+            if (element.cells[0].children[0].innerHTML.toLowerCase().search(search) != -1)
+            {
+                element.style.display = "table-row";
+            }
+            else
+            {
+                element.style.display = "none";
+            }
         }
       }
     </script>
@@ -32,18 +33,18 @@
         <h1>Welcome to Venn, {{ name }}!</h1>
     </div>
     <div>
-        <form>
+        <form style="display: inline">
           <input autocomplete="off" autofocus id="search" placeholder="Search" type="text">
-          <input type="submit" onsubmit="searchEvents(); return false;">
         </form>
+        <button onclick="searchEvents()">Search</button>
     </div>
     <div style="position: absolute; left: 10%; right: 10%" class="center margins">
         <table>
             <thead>
                 <tr>
                     <td>Name</td>
-                    <td>Start Date</td>
-                    <td>End Date</td>
+                    <td>Earliest Start Date</td>
+                    <td>Latest End Date</td>
                     <td colspan="2">Link (click to copy!)</td>
                 </tr>
             </thead>
